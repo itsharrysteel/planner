@@ -260,8 +260,9 @@ tr:last-child td { border-bottom: none; }
 }
 
 .vision-grid {
-    column-count: 4; 
+column-count: 4; 
     column-gap: 1.5rem;
+    align-items: start;
 }
 @media (max-width: 900px) { .vision-grid { column-count: 3; } }
 @media (max-width: 600px) { .vision-grid { column-count: 2; } }
