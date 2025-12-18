@@ -53,9 +53,10 @@ export async function onRequest(context) {
 
     // --- BUDGET ITEMS ---
     if (resource === 'budget_items' && path[2] === 'add') {
+        // Now accepts final_payment_date
         const info = await db.prepare(
-            'INSERT INTO budget_items (category, name, monthly_cost, total_cost) VALUES (?, ?, ?, ?)'
-        ).bind(data.category, data.name, data.monthly_cost, data.total_cost).run();
+            'INSERT INTO budget_items (category, name, monthly_cost, total_cost, final_payment_date) VALUES (?, ?, ?, ?, ?)'
+        ).bind(data.category, data.name, data.monthly_cost, data.total_cost, data.final_payment_date).run();
         return Response.json(info);
     }
 
@@ -66,9 +67,45 @@ export async function onRequest(context) {
         return Response.json(info);
     }
 
+    if (resource === 'budget_items' && path[2] === 'update_order') {
+        // Swap logic for Drag & Drop
+        if (data.swap_with_id) {
+            const itemA = await db.prepare('SELECT id, position_order FROM budget_items WHERE id = ?').bind(data.id).first();
+            const itemB = await db.prepare('SELECT id, position_order FROM budget_items WHERE id = ?').bind(data.swap_with_id).first();
+            
+            // Handle nulls if they exist
+            const orderA = itemA.position_order || itemA.id;
+            const orderB = itemB.position_order || itemB.id;
+
+            await db.batch([
+                db.prepare('UPDATE budget_items SET position_order = ? WHERE id = ?').bind(orderB, itemA.id),
+                db.prepare('UPDATE budget_items SET position_order = ? WHERE id = ?').bind(orderA, itemB.id)
+            ]);
+            return Response.json({ success: true });
+        }
+    }
+
     if (resource === 'budget_items' && path[2] === 'delete') {
          const info = await db.prepare('DELETE FROM budget_items WHERE id = ?').bind(data.id).run();
          return Response.json(info);
+    }
+
+    // --- RESET LOGIC (The "Payday" Trigger) ---
+    // We will call this endpoint /api/budget_items/reset whenever the app loads
+    // and detects we are in a new month compared to the last check.
+    if (resource === 'budget_items' && path[2] === 'reset') {
+        // 1. Reduce Total Cost for Paybacks that were paid
+        // We assume if it was ticked (is_paid_this_month = 1), we deduct the monthly cost from total.
+        await db.prepare(`
+            UPDATE budget_items 
+            SET total_cost = total_cost - monthly_cost 
+            WHERE category = 'Payback' AND is_paid_this_month = 1 AND total_cost > 0
+        `).run();
+
+        // 2. Uncheck EVERYTHING for the new month
+        const info = await db.prepare('UPDATE budget_items SET is_paid_this_month = 0').run();
+        
+        return Response.json({ success: true, info });
     }
 
     // --- VISION BOARD ---
