@@ -143,3 +143,79 @@ h1 { margin-bottom: 1.5rem; color: var(--primary); }
     display: flex; align-items: center; gap: 10px;
     padding: 1rem; background: white; border-bottom: 1px solid #eee;
 }
+
+/* --- GOALS & HABITS STYLES --- */
+
+.goals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.goal-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+.goal-card:hover { transform: translateY(-3px); }
+
+.goal-image {
+    height: 140px;
+    background-color: #eee;
+    background-size: cover;
+    background-position: center;
+}
+
+.goal-content { padding: 1rem; flex: 1; }
+
+.goal-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 0.5rem; }
+
+/* Progress Bar */
+.progress-container {
+    background: #eee;
+    height: 10px;
+    border-radius: 5px;
+    overflow: hidden;
+    margin: 10px 0;
+}
+.progress-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.goal-stats {
+    display: flex; justify-content: space-between;
+    font-size: 0.85rem; color: #666; margin-bottom: 1rem;
+}
+
+/* Quick Actions */
+.goal-actions {
+    border-top: 1px solid #f0f0f0;
+    padding: 0.5rem;
+    display: flex;
+    justify-content: space-around;
+}
+
+.action-btn {
+    background: none; border: none;
+    color: var(--accent); font-weight: bold;
+    cursor: pointer; padding: 5px 10px;
+    font-size: 1.2rem;
+}
+.action-btn:hover { background: #f0f8ff; border-radius: 4px; }
+
+/* Detail Modal Textarea */
+.notes-area {
+    width: 100%; height: 100px;
+    padding: 10px; border: 1px solid #ddd;
+    border-radius: 6px; margin-top: 10px;
+    font-family: inherit; resize: vertical;
+}
