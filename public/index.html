@@ -64,34 +64,39 @@
         <h1>Daily Planning</h1>
         <button onclick="openAddTaskModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Task</button>
     </div>
-
-<div class="tab-container">
-    <button id="tab-personal" class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
+    <div class="tab-container">
+        <button id="tab-personal" class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
+        <button id="tab-work" class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
+    </div>
     
-    <button id="tab-work" class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
-</div>
-            <div id="view-personal" class="daily-view">
-                <div class="card personal-list" id="personal-task-list"><p>Loading tasks...</p></div>
-            </div>
-            <div id="view-work" class="daily-view kanban-board" style="display:none;">
-                <div class="kanban-column" id="col-todo">
-                    <div class="kanban-header">To Do <span id="count-todo">0</span></div>
-                    <div class="task-container" data-status="Todo"></div>
-                </div>
-                <div class="kanban-column" id="col-inprogress">
-                    <div class="kanban-header">In Progress <span id="count-inprogress">0</span></div>
-                    <div class="task-container" data-status="In-Progress"></div>
-                </div>
-                <div class="kanban-column" id="col-onhold">
-                    <div class="kanban-header">On Hold <span id="count-onhold">0</span></div>
-                    <div class="task-container" data-status="On-Hold"></div>
-                </div>
-                <div class="kanban-column" id="col-done">
-                    <div class="kanban-header">Completed <span id="count-done">0</span></div>
-                    <div class="task-container" data-status="Done"></div>
-                </div>
-            </div>
-        </section>
+    <div id="view-personal" class="daily-view">
+        <div class="personal-actions">
+            <button onclick="addPersonalSection()" style="color:#666; background:none; border:1px dashed #ccc; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:0.8rem;">+ Add Section</button>
+        </div>
+        <div class="card personal-list" id="personal-task-list" style="margin-top:10px; padding:0;">
+            <p style="padding:1rem;">Loading tasks...</p>
+        </div>
+    </div>
+
+    <div id="view-work" class="daily-view kanban-board" style="display:none;">
+        <div class="kanban-column" id="col-todo">
+            <div class="kanban-header">To Do <span id="count-todo">0</span></div>
+            <div class="task-container" data-status="Todo"></div>
+        </div>
+        <div class="kanban-column" id="col-inprogress">
+            <div class="kanban-header">In Progress <span id="count-inprogress">0</span></div>
+            <div class="task-container" data-status="In-Progress"></div>
+        </div>
+        <div class="kanban-column" id="col-onhold">
+            <div class="kanban-header">On Hold <span id="count-onhold">0</span></div>
+            <div class="task-container" data-status="On-Hold"></div>
+        </div>
+        <div class="kanban-column" id="col-done">
+            <div class="kanban-header">Completed <span id="count-done">0</span></div>
+            <div class="task-container" data-status="Done"></div>
+        </div>
+    </div>
+</section>
 
         <section id="monthly" class="page-section">
             <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -247,9 +252,13 @@
             </div>
         </div>
 
-        <div style="margin-top:20px; text-align:right;">
-            <button onclick="document.getElementById('task-modal').style.display='none'" style="margin-right:10px; padding:0.5rem 1rem; cursor:pointer;">Cancel</button>
-            <button onclick="saveTask()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:4px;">Save Task</button>
+        <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
+            <button type="button" onclick="deleteTask()" class="delete-btn">Delete</button>
+            
+            <div>
+                <button onclick="document.getElementById('task-modal').style.display='none'" style="margin-right:10px; padding:0.5rem 1rem; cursor:pointer;">Cancel</button>
+                <button onclick="saveTask()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:4px;">Save Task</button>
+            </div>
         </div>
     </div>
 </div>
