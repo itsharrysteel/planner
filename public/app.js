@@ -7,13 +7,18 @@ function setupNavigation() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetId = link.getAttribute('href').substring(1);
+            
+            // Update Sidebar
             links.forEach(l => l.classList.remove('active'));
             link.classList.add('active');
+
+            // Update Page Section
             sections.forEach(section => {
                 section.classList.remove('active');
                 if (section.id === targetId) section.classList.add('active');
             });
-            // Refresh Dashboard data on click
+
+            // Refresh Data if Dashboard
             if(targetId === 'dashboard') {
                 fetchTasks().then(() => fetchBudget().then(loadDashboard));
             }
@@ -23,54 +28,67 @@ function setupNavigation() {
 
 /* --- DASHBOARD LOGIC --- */
 function loadDashboard() {
-    // 1. Date & Greeting
     const date = new Date();
     const hrs = date.getHours();
     let greet = "Good Morning";
     if (hrs >= 12) greet = "Good Afternoon";
     if (hrs >= 17) greet = "Good Evening";
     
-    document.getElementById('dash-greeting').innerText = greet + ", User";
-    document.getElementById('dash-date').innerText = date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    const greetEl = document.getElementById('dash-greeting');
+    const dateEl = document.getElementById('dash-date');
+    if(greetEl) greetEl.innerText = greet + ", User";
+    if(dateEl) dateEl.innerText = date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // 2. Task Stats
+    // Task Stats
     const personalTodos = allTasks.filter(t => t.type === 'Personal' && t.status !== 'Done');
     const workTodos = allTasks.filter(t => t.type === 'Work' && t.status !== 'Done');
     
-    document.getElementById('dash-task-count').innerText = personalTodos.length + workTodos.length;
-    document.getElementById('dash-personal-count').innerText = personalTodos.length;
-    document.getElementById('dash-work-count').innerText = workTodos.length;
-
-    // 3. Render Top 3 Tasks
-    const list = document.getElementById('dash-todo-list');
-    list.innerHTML = '';
-    const topTasks = [...personalTodos, ...workTodos].slice(0, 3);
+    const countEl = document.getElementById('dash-task-count');
+    if(countEl) countEl.innerText = personalTodos.length + workTodos.length;
     
-    if (topTasks.length === 0) {
-        list.innerHTML = '<li>No active tasks! Relax.</li>';
-    } else {
-        topTasks.forEach(t => {
-            const li = document.createElement('li');
-            li.innerHTML = `<span>${t.title}</span> <span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px;">${t.type}</span>`;
-            list.appendChild(li);
-        });
+    const pCount = document.getElementById('dash-personal-count');
+    if(pCount) pCount.innerText = personalTodos.length;
+    
+    const wCount = document.getElementById('dash-work-count');
+    if(wCount) wCount.innerText = workTodos.length;
+
+    // Top 3 Tasks
+    const list = document.getElementById('dash-todo-list');
+    if(list) {
+        list.innerHTML = '';
+        const topTasks = [...personalTodos, ...workTodos].slice(0, 3);
+        
+        if (topTasks.length === 0) {
+            list.innerHTML = '<li>No active tasks! Relax.</li>';
+        } else {
+            topTasks.forEach(t => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${t.title}</span> <span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px;">${t.type}</span>`;
+                list.appendChild(li);
+            });
+        }
     }
 
-    // 4. Money Stats
+    // Money Stats
     const paybacks = allBudgetItems.filter(i => i.category === 'Payback');
     const totalDebt = paybacks.reduce((sum, item) => sum + (item.total_cost || 0), 0);
-    document.getElementById('dash-debt-left').innerText = totalDebt.toFixed(2);
+    const debtEl = document.getElementById('dash-debt-left');
+    if(debtEl) debtEl.innerText = totalDebt.toFixed(2);
 
-    // 5. Scratchpad Load
+    // Scratchpad
     const savedNote = localStorage.getItem('my_scratchpad');
-    if (savedNote) {
-        document.getElementById('dash-scratchpad').value = savedNote;
+    const scratchEl = document.getElementById('dash-scratchpad');
+    if (savedNote && scratchEl) {
+        scratchEl.value = savedNote;
     }
 }
 
-document.getElementById('dash-scratchpad').addEventListener('input', (e) => {
-    localStorage.setItem('my_scratchpad', e.target.value);
-});
+const scratchpad = document.getElementById('dash-scratchpad');
+if(scratchpad) {
+    scratchpad.addEventListener('input', (e) => {
+        localStorage.setItem('my_scratchpad', e.target.value);
+    });
+}
 
 /* --- DAILY PLANNING LOGIC --- */
 let allTasks = []; 
@@ -89,8 +107,9 @@ async function fetchTasks() {
 }
 
 function renderTasks() {
-    // 1. Reset Lists
     const personalList = document.getElementById('personal-task-list');
+    if(!personalList) return;
+    
     personalList.innerHTML = '';
     
     const columns = {
@@ -99,7 +118,9 @@ function renderTasks() {
         'On-Hold': document.querySelector('#col-onhold .task-container'),
         'Done': document.querySelector('#col-done .task-container')
     };
-    Object.values(columns).forEach(col => col.innerHTML = '');
+    
+    // Clear columns if they exist (Work tab might be hidden)
+    if(columns['Todo']) Object.values(columns).forEach(col => col.innerHTML = '');
 
     const counts = { 'Todo': 0, 'In-Progress': 0, 'On-Hold': 0, 'Done': 0 };
 
@@ -108,7 +129,6 @@ function renderTasks() {
         if (task.type === 'Personal') {
             const div = document.createElement('div');
             
-            // Is it a Header or a Task?
             if (task.is_header) {
                 div.className = 'personal-header';
                 div.innerHTML = `
@@ -124,7 +144,6 @@ function renderTasks() {
                 `;
             }
             
-            // Enable Dragging for Personal Items
             div.draggable = true;
             div.dataset.id = task.id;
             addPersonalDragEvents(div);
@@ -132,7 +151,7 @@ function renderTasks() {
             personalList.appendChild(div);
         } 
         // --- WORK KANBAN ---
-        else {
+        else if (columns['Todo']) { // Only render if Kanban DOM exists
             const statusKey = task.status || 'Todo';
             if (columns[statusKey]) {
                 counts[statusKey]++; 
@@ -170,10 +189,12 @@ function renderTasks() {
         }
     });
 
-    document.getElementById('count-todo').innerText = counts['Todo'];
-    document.getElementById('count-inprogress').innerText = counts['In-Progress'];
-    document.getElementById('count-onhold').innerText = counts['On-Hold'];
-    document.getElementById('count-done').innerText = counts['Done'];
+    if(document.getElementById('count-todo')) {
+        document.getElementById('count-todo').innerText = counts['Todo'];
+        document.getElementById('count-inprogress').innerText = counts['In-Progress'];
+        document.getElementById('count-onhold').innerText = counts['On-Hold'];
+        document.getElementById('count-done').innerText = counts['Done'];
+    }
 }
 
 // --- PERSONAL DRAG & DROP ---
@@ -193,14 +214,10 @@ function addPersonalDragEvents(row) {
         this.classList.remove('dragging');
         
         const targetId = this.dataset.id;
-        
-        // Ensure we are swapping Personal items only
         if (personalDraggedId && targetId && personalDraggedId !== targetId) {
-            // Optimistic Swap
             const itemA = allTasks.find(t => t.id == personalDraggedId);
             const itemB = allTasks.find(t => t.id == targetId);
             
-            // If dragging between Personal and Work, stop.
             if (!itemA || !itemB || itemA.type !== 'Personal' || itemB.type !== 'Personal') return;
 
             const temp = itemA.position_order;
@@ -285,6 +302,9 @@ function openTaskModalId(id) {
 }
 
 function openTaskModal(task) {
+    const modal = document.getElementById('task-modal');
+    if(!modal) return;
+
     if (task) {
         document.getElementById('task-modal-title').innerText = "Edit Task";
         document.getElementById('task-id').value = task.id;
@@ -296,8 +316,8 @@ function openTaskModal(task) {
         document.getElementById('task-due').value = task.due_date || '';
         document.getElementById('task-review').value = task.review_date || '';
         
-        // Show delete button
-        document.querySelector('.delete-btn').style.display = 'block';
+        const delBtn = document.querySelector('.delete-btn');
+        if(delBtn) delBtn.style.display = 'block';
     } else {
         document.getElementById('task-modal-title').innerText = "New Task";
         document.getElementById('task-id').value = '';
@@ -309,10 +329,10 @@ function openTaskModal(task) {
         document.getElementById('task-due').value = '';
         document.getElementById('task-review').value = '';
         
-        // Hide delete button for new tasks
-        document.querySelector('.delete-btn').style.display = 'none';
+        const delBtn = document.querySelector('.delete-btn');
+        if(delBtn) delBtn.style.display = 'none';
     }
-    document.getElementById('task-modal').style.display = 'block';
+    modal.style.display = 'block';
 }
 
 async function saveTask() {
@@ -359,7 +379,6 @@ async function deleteTask() {
     fetchTasks();
 }
 
-// Helper for Personal Headers
 async function addPersonalSection() {
     const name = prompt("Enter section name (e.g. 'Morning', 'Errands'):");
     if(!name) return;
@@ -370,7 +389,7 @@ async function addPersonalSection() {
         body: JSON.stringify({ 
             title: name, 
             type: 'Personal',
-            is_header: 1 // Marks it as a section
+            is_header: 1 
         })
     });
     fetchTasks();
@@ -397,7 +416,6 @@ async function updateTaskStatusSimple(id, newStatus) {
     });
 }
 
-// --- TAB SWITCHING LOGIC ---
 function switchDailyTab(tab) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.daily-view').forEach(v => v.style.display = 'none');
@@ -405,186 +423,13 @@ function switchDailyTab(tab) {
     if(tab === 'personal') {
         const btn = document.getElementById('tab-personal');
         if(btn) btn.classList.add('active');
-        document.getElementById('view-personal').style.display = 'block';
+        const view = document.getElementById('view-personal');
+        if(view) view.style.display = 'block';
     } else {
         const btn = document.getElementById('tab-work');
         if(btn) btn.classList.add('active');
-        document.getElementById('view-work').style.display = 'grid'; 
-    }
-}
-
-// --- TASK DRAG & DROP ---
-let taskDraggedId = null;
-
-function addTaskDragEvents(card) {
-    card.addEventListener('dragstart', function(e) {
-        taskDraggedId = this.dataset.id;
-        e.dataTransfer.effectAllowed = 'move';
-        this.classList.add('dragging');
-    });
-
-    card.addEventListener('dragend', function() {
-        this.classList.remove('dragging');
-        // Clean up visual cues
-        document.querySelectorAll('.task-container').forEach(c => c.style.background = '');
-    });
-}
-
-// Add listeners to COLUMNS (Containers) to handle drops
-document.querySelectorAll('.task-container').forEach(container => {
-    container.addEventListener('dragover', e => {
-        e.preventDefault(); // Allow dropping
-        container.style.background = '#f4f5f7'; // Highlight drop zone
-    });
-    
-    container.addEventListener('dragleave', e => {
-        container.style.background = '';
-    });
-
-    container.addEventListener('drop', async function(e) {
-        e.preventDefault();
-        container.style.background = '';
-        
-        const newStatus = this.dataset.status; // 'Todo', 'In-Progress' etc
-        
-        // Find if we dropped ONTO another card (Swap/Reorder)
-        const targetCard = e.target.closest('.task-card');
-        
-        if (targetCard && taskDraggedId && targetCard.dataset.id !== taskDraggedId) {
-            // SWAP LOGIC
-            const targetId = targetCard.dataset.id;
-            
-            // Optimistic update
-            const itemA = allTasks.find(t => t.id == taskDraggedId);
-            const itemB = allTasks.find(t => t.id == targetId);
-            
-            // Swap orders
-            const temp = itemA.position_order;
-            itemA.position_order = itemB.position_order;
-            itemB.position_order = temp;
-            
-            // Update status of dragged item to match target's column
-            itemA.status = newStatus; 
-            
-            // Re-sort and Render
-            allTasks.sort((a,b) => a.position_order - b.position_order);
-            renderTasks();
-
-            // API Call
-            await fetch('/api/tasks/update_order', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id: taskDraggedId, swap_with_id: targetId })
-            });
-
-        } else if (taskDraggedId) {
-            // DROP INTO EMPTY SPACE (Change Status, move to bottom)
-            const item = allTasks.find(t => t.id == taskDraggedId);
-            if (item.status !== newStatus) {
-                item.status = newStatus;
-                item.position_order = Date.now(); // Move to end of list
-                
-                renderTasks();
-
-                await fetch('/api/tasks/update_order', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: taskDraggedId, new_status: newStatus })
-                });
-            }
-        }
-    });
-});
-
-// --- TASK MODAL LOGIC ---
-function openAddTaskModal() {
-    openTaskModal(null); // Open empty
-}
-
-function openTaskModal(task) {
-    if (task) {
-        // Edit Mode
-        document.getElementById('task-modal-title').innerText = "Edit Task";
-        document.getElementById('task-id').value = task.id;
-        document.getElementById('task-title').value = task.title;
-        document.getElementById('task-type').value = task.type || 'Work';
-        document.getElementById('task-status-select').value = task.status || 'Todo';
-        document.getElementById('task-desc').value = task.description || '';
-        document.getElementById('task-start').value = task.start_date || '';
-        document.getElementById('task-due').value = task.due_date || '';
-        document.getElementById('task-review').value = task.review_date || '';
-    } else {
-        // New Mode
-        document.getElementById('task-modal-title').innerText = "New Task";
-        document.getElementById('task-id').value = '';
-        document.getElementById('task-title').value = '';
-        document.getElementById('task-type').value = 'Work';
-        document.getElementById('task-status-select').value = 'Todo';
-        document.getElementById('task-desc').value = '';
-        document.getElementById('task-start').value = '';
-        document.getElementById('task-due').value = '';
-        document.getElementById('task-review').value = '';
-    }
-    document.getElementById('task-modal').style.display = 'block';
-}
-
-async function saveTask() {
-    const id = document.getElementById('task-id').value;
-    const title = document.getElementById('task-title').value;
-    const type = document.getElementById('task-type').value;
-    const status = document.getElementById('task-status-select').value;
-    const desc = document.getElementById('task-desc').value;
-    const start = document.getElementById('task-start').value;
-    const due = document.getElementById('task-due').value;
-    const review = document.getElementById('task-review').value;
-
-    if (!title) return alert("Task title required");
-
-    await fetch('/api/tasks/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            id: id || null, 
-            title, type, status, 
-            description: desc, 
-            start_date: start, 
-            due_date: due, 
-            review_date: review 
-        })
-    });
-
-    document.getElementById('task-modal').style.display = 'none';
-    fetchTasks();
-}
-
-// Simple checkbox update for Personal list
-async function updateTaskStatusSimple(id, newStatus) {
-    const task = allTasks.find(t => t.id == id);
-    if(task) task.status = newStatus;
-    renderTasks();
-    await fetch('/api/tasks/update', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status: newStatus })
-    });
-}
-
-// --- TAB SWITCHING LOGIC ---
-function switchDailyTab(tab) {
-    // 1. Deactivate all tabs and hide all views
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.daily-view').forEach(v => v.style.display = 'none');
-    
-    if(tab === 'personal') {
-        // 2. Activate Personal
-        const btn = document.getElementById('tab-personal');
-        if(btn) btn.classList.add('active');
-        document.getElementById('view-personal').style.display = 'block';
-    } else {
-        // 3. Activate Work
-        const btn = document.getElementById('tab-work');
-        if(btn) btn.classList.add('active');
-        document.getElementById('view-work').style.display = 'grid'; 
+        const view = document.getElementById('view-work');
+        if(view) view.style.display = 'grid'; 
     }
 }
 
@@ -687,7 +532,6 @@ async function quickUpdateGoal(id, change) {
     const newAmount = Math.max(0, goal.current_amount + change);
     goal.current_amount = newAmount;
 
-    // DYNAMIC CONTAINER SELECTION
     let containerId = 'monthly-goals-container';
     if (goal.type === 'Yearly') containerId = 'yearly-goals-container';
     if (goal.type === 'Habit') containerId = 'habit-goals-container';
@@ -701,14 +545,12 @@ async function quickUpdateGoal(id, change) {
 }
 
 /* --- BUDGET LOGIC --- */
-
 let allBudgetItems = [];
 
 async function fetchBudget() {
     try {
         const res = await fetch('/api/budget_items');
         allBudgetItems = await res.json();
-        // Fix sorting
         allBudgetItems.forEach(i => { if(!i.position_order) i.position_order = i.id; });
         allBudgetItems.sort((a,b) => (a.position_order - b.position_order));
 
@@ -730,27 +572,23 @@ function renderBudget() {
         let categoryRemaining = 0;
 
         items.forEach(item => {
-            // Drag Drop Setup
             const tr = document.createElement('tr');
             tr.draggable = true;
             tr.dataset.id = item.id;
             tr.dataset.cat = cat;
             addBudgetDragEvents(tr);
 
-            // --- TYPE: HEADER ---
             if (item.type === 'header') {
                 tr.className = 'budget-header-row';
-                // Colspan 7 ensures it spans across all columns (Name, Cost, Action etc)
                 tr.innerHTML = `
                     <td style="cursor:grab; color:#ccc">☰</td>
                     <td colspan="5" class="editable-cell" onclick="editBudgetItem(${item.id})">${item.name}</td>
                     <td><button onclick="deleteBudgetItem(${item.id})" style="color:#999; border:none; background:none; cursor:pointer;">x</button></td>
                 `;
                 list.appendChild(tr);
-                return; // Stop here for headers
+                return;
             }
 
-            // --- TYPE: BILL (Standard Logic) ---
             const isPaid = item.is_paid_this_month === 1;
             let displayMonthly = item.monthly_cost;
             let monthsDisplay = "-";
@@ -764,7 +602,6 @@ function renderBudget() {
                     displayMonthly = item.total_cost / monthsLeft;
                     monthsDisplay = `${monthsLeft} mths`;
                 }
-                
                 if (isPaid) categoryRemaining += (item.total_cost - displayMonthly);
                 else categoryRemaining += item.total_cost;
             } else {
@@ -772,7 +609,6 @@ function renderBudget() {
             }
 
             tr.className = isPaid ? 'paid-row' : '';
-            
             const nameCell = `<span class="editable-cell" onclick="editBudgetItem(${item.id})">${item.name}</span>`;
 
             if (cat === 'Payback') {
@@ -798,15 +634,30 @@ function renderBudget() {
             list.appendChild(tr);
         });
 
-        totalSpan.innerText = categoryRemaining.toFixed(2);
+        if(totalSpan) totalSpan.innerText = categoryRemaining.toFixed(2);
     });
 }
 
-// --- MODAL & SAVING ---
+async function checkPaydayReset() {
+    const lastCheck = localStorage.getItem('last_budget_check_month');
+    const currentMonth = new Date().toISOString().slice(0, 7); 
+
+    if (!lastCheck) {
+        localStorage.setItem('last_budget_check_month', currentMonth);
+        return;
+    }
+
+    if (lastCheck !== currentMonth) {
+        console.log("New month detected! Resetting budget...");
+        await fetch('/api/budget_items/reset', { method: 'POST' });
+        localStorage.setItem('last_budget_check_month', currentMonth);
+        fetchBudget();
+        alert("Welcome to a new month! \n\n• Paybacks have been updated.\n• Checkboxes have been reset.");
+    }
+}
 
 function openBudgetModal(category, mode = 'bill') {
-    // Reset Modal for New Entry
-    document.getElementById('budget-id').value = ''; // Empty ID = New
+    document.getElementById('budget-id').value = ''; 
     document.getElementById('budget-type').value = mode; 
     document.getElementById('budget-category').value = category;
     document.getElementById('budget-modal-title').innerText = mode === 'header' ? `Add Header to ${category}` : `Add Bill to ${category}`;
@@ -816,13 +667,11 @@ function openBudgetModal(category, mode = 'bill') {
     document.getElementById('budget-total').value = '';
     document.getElementById('budget-date').value = '';
     
-    // Hide cost fields if adding a Header
     const costFields = document.getElementById('cost-fields');
-    costFields.style.display = mode === 'header' ? 'none' : 'block';
+    if(costFields) costFields.style.display = mode === 'header' ? 'none' : 'block';
 
-    // Show Payback fields only if Payback AND not header
     const paybackFields = document.getElementById('payback-fields');
-    paybackFields.style.display = (category === 'Payback' && mode !== 'header') ? 'block' : 'none';
+    if(paybackFields) paybackFields.style.display = (category === 'Payback' && mode !== 'header') ? 'block' : 'none';
     
     document.getElementById('budget-modal').style.display = 'block';
 }
@@ -831,7 +680,6 @@ function editBudgetItem(id) {
     const item = allBudgetItems.find(i => i.id === id);
     if (!item) return;
 
-    // Populate Modal with existing data
     document.getElementById('budget-id').value = item.id;
     document.getElementById('budget-type').value = item.type;
     document.getElementById('budget-category').value = item.category;
@@ -842,12 +690,11 @@ function editBudgetItem(id) {
     document.getElementById('budget-total').value = item.total_cost;
     document.getElementById('budget-date').value = item.final_payment_date || '';
 
-    // Logic to show/hide fields based on what we are editing
     const costFields = document.getElementById('cost-fields');
-    costFields.style.display = item.type === 'header' ? 'none' : 'block';
+    if(costFields) costFields.style.display = item.type === 'header' ? 'none' : 'block';
 
     const paybackFields = document.getElementById('payback-fields');
-    paybackFields.style.display = (item.category === 'Payback' && item.type !== 'header') ? 'block' : 'none';
+    if(paybackFields) paybackFields.style.display = (item.category === 'Payback' && item.type !== 'header') ? 'block' : 'none';
 
     document.getElementById('budget-modal').style.display = 'block';
 }
@@ -867,8 +714,7 @@ async function saveBudgetItem() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            id, // If ID exists, API will update instead of insert
-            category, name, type,
+            id, category, name, type,
             monthly_cost: monthly, 
             total_cost: total,
             final_payment_date: finalDate 
@@ -879,66 +725,10 @@ async function saveBudgetItem() {
     fetchBudget();
 }
 
-// --- DRAG AND DROP (Budget Specific) ---
-let budgetDraggedId = null;
-
-function addBudgetDragEvents(row) {
-    row.addEventListener('dragstart', function(e) {
-        budgetDraggedId = this.dataset.id;
-        e.dataTransfer.effectAllowed = 'move';
-        this.style.opacity = '0.4';
-    });
-    
-    row.addEventListener('dragover', function(e) {
-        e.preventDefault(); // Allow drop
-        e.dataTransfer.dropEffect = 'move';
-    });
-
-   row.addEventListener('drop', async function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        this.style.opacity = '1';
-        
-        const targetId = this.dataset.id;
-        
-        // Check if we are dropping on a valid row in the same category
-        // We use a safe check here to ensure we don't crash if the dragged element isn't found
-        const draggedRow = document.querySelector(`tr[data-id="${budgetDraggedId}"]`);
-        
-        if (budgetDraggedId && targetId && budgetDraggedId !== targetId && draggedRow && this.dataset.cat === draggedRow.dataset.cat) {
-            
-            // 1. Optimistic Swap (Update the internal numbers)
-            const itemA = allBudgetItems.find(i => i.id == budgetDraggedId);
-            const itemB = allBudgetItems.find(i => i.id == targetId);
-            
-            const temp = itemA.position_order;
-            itemA.position_order = itemB.position_order;
-            itemB.position_order = temp;
-            
-            // 2. CRITICAL FIX: Re-sort the array so the visual order updates
-            allBudgetItems.sort((a,b) => (a.position_order - b.position_order));
-            
-            renderBudget();
-
-            // 3. API Call to save the change
-            await fetch('/api/budget_items/update_order', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id: budgetDraggedId, swap_with_id: targetId })
-            });
-        }
-    });
-    
-    row.addEventListener('dragend', function() {
-        this.style.opacity = '1';
-    });
-}
-
-// Standard Toggle/Delete...
 async function toggleBudgetPaid(id, isPaid) {
     const item = allBudgetItems.find(i => i.id === id);
     if(item) item.is_paid_this_month = isPaid ? 1 : 0;
-    renderBudget(); // Re-render to see immediate "Total Left" update for Paybacks
+    renderBudget(); 
     await fetch('/api/budget_items/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -954,6 +744,39 @@ async function deleteBudgetItem(id) {
         body: JSON.stringify({ id })
     });
     fetchBudget();
+}
+
+let budgetDraggedId = null;
+function addBudgetDragEvents(row) {
+    row.addEventListener('dragstart', function(e) {
+        budgetDraggedId = this.dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+        this.style.opacity = '0.4';
+    });
+    row.addEventListener('dragover', function(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; });
+    row.addEventListener('drop', async function(e) {
+        e.preventDefault(); e.stopPropagation();
+        this.style.opacity = '1';
+        
+        const targetId = this.dataset.id;
+        const draggedRow = document.querySelector(`tr[data-id="${budgetDraggedId}"]`);
+        
+        if (budgetDraggedId && targetId && budgetDraggedId !== targetId && draggedRow && this.dataset.cat === draggedRow.dataset.cat) {
+            const itemA = allBudgetItems.find(i => i.id == budgetDraggedId);
+            const itemB = allBudgetItems.find(i => i.id == targetId);
+            const temp = itemA.position_order;
+            itemA.position_order = itemB.position_order;
+            itemB.position_order = temp;
+            allBudgetItems.sort((a,b) => (a.position_order - b.position_order));
+            renderBudget();
+            await fetch('/api/budget_items/update_order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: budgetDraggedId, swap_with_id: targetId })
+            });
+        }
+    });
+    row.addEventListener('dragend', function() { this.style.opacity = '1'; });
 }
 
 /* --- VISION BOARD LOGIC --- */
@@ -976,6 +799,7 @@ async function fetchCategories() {
 
 function renderCategories() {
     const container = document.querySelector('.vision-filter');
+    if(!container) return;
     container.innerHTML = `<button class="filter-btn ${currentVisionFilter === 'All' ? 'active' : ''}" onclick="filterVision('All')">All</button>`;
     
     allCategories.forEach(cat => {
@@ -983,10 +807,7 @@ function renderCategories() {
         btn.className = `filter-btn ${currentVisionFilter === cat.name ? 'active' : ''}`;
         btn.innerText = cat.name;
         btn.onclick = () => filterVision(cat.name);
-        
-        // ADDED: Tooltip helper
         btn.title = "Double-click to delete this category"; 
-        
         btn.ondblclick = () => deleteCategory(cat.id, cat.name);
         container.appendChild(btn);
     });
@@ -998,13 +819,15 @@ function renderCategories() {
     container.appendChild(addBtn);
 
     const select = document.getElementById('vision-section');
-    select.innerHTML = '';
-    allCategories.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat.name;
-        opt.innerText = cat.name;
-        select.appendChild(opt);
-    });
+    if(select) {
+        select.innerHTML = '';
+        allCategories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.name;
+            opt.innerText = cat.name;
+            select.appendChild(opt);
+        });
+    }
 }
 
 async function addNewCategory() {
@@ -1033,13 +856,7 @@ async function fetchVision() {
     try {
         const res = await fetch('/api/vision_board');
         allVisionItems = await res.json();
-        
-        // AUTO-FIX: If any item has no order (null/0), default it to its ID
-        allVisionItems.forEach(item => {
-            if (!item.position_order) item.position_order = item.id;
-        });
-
-        // Sort by position_order
+        allVisionItems.forEach(item => { if (!item.position_order) item.position_order = item.id; });
         allVisionItems.sort((a, b) => (a.position_order) - (b.position_order));
         renderVision();
     } catch (err) { console.error(err); }
@@ -1092,7 +909,6 @@ async function updateVisionTitle(id, newTitle) {
     });
 }
 
-/* Drag and Drop Logic */
 let draggedId = null;
 function handleDragStart(e) { draggedId = this.dataset.id; this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
 function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; this.classList.add('drag-over'); }
@@ -1106,14 +922,11 @@ function handleDrop(e) {
 async function swapItems(idA, idB) {
     const idxA = allVisionItems.findIndex(i => i.id == idA);
     const idxB = allVisionItems.findIndex(i => i.id == idB);
-    
     const tempOrder = allVisionItems[idxA].position_order;
     allVisionItems[idxA].position_order = allVisionItems[idxB].position_order;
     allVisionItems[idxB].position_order = tempOrder;
-
     allVisionItems.sort((a, b) => a.position_order - b.position_order);
     renderVision();
-
     await fetch('/api/vision_board/update', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -1131,40 +944,14 @@ async function saveVisionItem() {
     const title = document.getElementById('vision-title').value;
     const url = document.getElementById('vision-url').value;
     const section = document.getElementById('vision-section').value;
-
     if (!title || !url) return alert("Please enter a title and image URL");
-
-    // FIX: Generate a huge number so it always goes to the end
-    // (Wait a tiny bit to ensure uniqueness if clicking fast)
-    const position_order = Date.now(); 
-
-    // Optimistic Render (Add to UI immediately)
-    const newItem = { 
-        id: 'temp-' + Date.now(), 
-        title, 
-        image_url: url, 
-        section, 
-        position_order 
-    };
-    allVisionItems.push(newItem);
-    renderVision();
-
-    // Send to Backend (Note: we aren't sending position_order here because 
-    // we haven't updated the API to accept it on INSERT, but the DB will default to 0. 
-    // To fix this properly, let's rely on the DB ID or update the API.)
     
-    // BETTER FIX: Let's just reload after save for now to get the real ID from DB
     await fetch('/api/vision_board/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, image_url: url, section })
     });
-
     document.getElementById('vision-modal').style.display = 'none';
-    
-    // Re-fetch to get the real ID and order from the database
-    // (Run the SQL update logic on the backend if needed, but for now 
-    // just re-fetching ensures we have valid IDs).
     fetchVision(); 
 }
 
