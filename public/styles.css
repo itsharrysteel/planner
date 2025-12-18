@@ -86,3 +86,60 @@ h1 { margin-bottom: 1.5rem; color: var(--primary); }
     from { opacity: 0; transform: translateY(5px); }
     to { opacity: 1; transform: translateY(0); }
 }
+
+/* --- Daily Planning Styles --- */
+
+/* Tabs */
+.tab-container { margin-bottom: 1.5rem; border-bottom: 1px solid #ddd; }
+.tab-btn {
+    background: none; border: none;
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem; cursor: pointer;
+    color: #666; border-bottom: 3px solid transparent;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: bold; }
+
+/* Kanban Board (Work View) */
+.kanban-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 4 Columns */
+    gap: 1rem;
+    height: calc(100vh - 200px); /* Fill screen */
+    overflow-x: auto;
+}
+
+.kanban-column {
+    background: #ebecf0;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.kanban-header {
+    font-weight: bold;
+    margin-bottom: 1rem;
+    display: flex; justify-content: space-between;
+    color: #172b4d;
+}
+
+/* Task Cards */
+.task-card {
+    background: white;
+    padding: 10px;
+    border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    margin-bottom: 0.5rem;
+    cursor: grab;
+    border-left: 4px solid var(--accent);
+}
+
+.task-card:hover { background: #f4f5f7; }
+.task-meta { font-size: 0.8rem; color: #888; margin-top: 5px; }
+
+/* Personal List View */
+.personal-list { max-width: 800px; }
+.personal-task {
+    display: flex; align-items: center; gap: 10px;
+    padding: 1rem; background: white; border-bottom: 1px solid #eee;
+}
