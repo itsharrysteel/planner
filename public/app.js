@@ -276,13 +276,12 @@ async function fetchBudget() {
     try {
         const res = await fetch('/api/budget_items');
         allBudgetItems = await res.json();
-        
-        // Auto-fix sort order if missing
+        // Fix sorting
         allBudgetItems.forEach(i => { if(!i.position_order) i.position_order = i.id; });
         allBudgetItems.sort((a,b) => (a.position_order - b.position_order));
 
         renderBudget();
-        checkPaydayReset(); // Check if we need to reset for new month
+        checkPaydayReset();
     } catch (err) { console.error(err); }
 }
 
@@ -296,62 +295,60 @@ function renderBudget() {
 
         list.innerHTML = '';
         const items = allBudgetItems.filter(i => i.category === cat);
-        let categoryRemaining = 0; // We will use this to track "Left to Pay"
+        let categoryRemaining = 0;
 
         items.forEach(item => {
-            const isPaid = item.is_paid_this_month === 1;
-            
-            // --- LOGIC START ---
-            let displayMonthly = item.monthly_cost;
-            let monthsDisplay = "-";
-
-            if (cat === 'Payback') {
-                // 1. Calculate Dynamic Monthly Payment
-                if (item.final_payment_date) {
-                    const now = new Date();
-                    const due = new Date(item.final_payment_date);
-                    const monthsDiff = (due.getFullYear() - now.getFullYear()) * 12 + (due.getMonth() - now.getMonth());
-                    const monthsLeft = Math.max(1, monthsDiff); 
-                    
-                    displayMonthly = item.total_cost / monthsLeft;
-                    monthsDisplay = `${monthsLeft} mths`;
-                }
-                
-                // 2. Payback Header Logic: 
-                // Show Total Debt, but subtract the monthly amount if checked (Visual Progress)
-                if (isPaid) {
-                    categoryRemaining += (item.total_cost - displayMonthly);
-                } else {
-                    categoryRemaining += item.total_cost;
-                }
-
-            } else {
-                // 3. Bills Header Logic:
-                // Only add to the total if it is NOT paid (Remaining Bills)
-                if (!isPaid) {
-                    categoryRemaining += item.monthly_cost;
-                }
-            }
-            // --- LOGIC END ---
-
+            // Drag Drop Setup
             const tr = document.createElement('tr');
-            tr.className = isPaid ? 'paid-row' : '';
-            
-            // Drag & Drop Setup
             tr.draggable = true;
             tr.dataset.id = item.id;
             tr.dataset.cat = cat;
             addBudgetDragEvents(tr);
 
-            // Render Row
-            if (cat === 'Payback') {
-                // Calculate the "Total Left" for this specific row (Visual only)
-                const currentDebtDisplay = isPaid ? (item.total_cost - displayMonthly) : item.total_cost;
+            // --- TYPE: HEADER ---
+            if (item.type === 'header') {
+                tr.className = 'budget-header-row';
+                // Colspan 7 ensures it spans across all columns (Name, Cost, Action etc)
+                tr.innerHTML = `
+                    <td style="cursor:grab; color:#ccc">☰</td>
+                    <td colspan="5" class="editable-cell" onclick="editBudgetItem(${item.id})">${item.name}</td>
+                    <td><button onclick="deleteBudgetItem(${item.id})" style="color:#999; border:none; background:none; cursor:pointer;">x</button></td>
+                `;
+                list.appendChild(tr);
+                return; // Stop here for headers
+            }
 
+            // --- TYPE: BILL (Standard Logic) ---
+            const isPaid = item.is_paid_this_month === 1;
+            let displayMonthly = item.monthly_cost;
+            let monthsDisplay = "-";
+
+            if (cat === 'Payback') {
+                if (item.final_payment_date) {
+                    const now = new Date();
+                    const due = new Date(item.final_payment_date);
+                    const monthsDiff = (due.getFullYear() - now.getFullYear()) * 12 + (due.getMonth() - now.getMonth());
+                    const monthsLeft = Math.max(1, monthsDiff); 
+                    displayMonthly = item.total_cost / monthsLeft;
+                    monthsDisplay = `${monthsLeft} mths`;
+                }
+                
+                if (isPaid) categoryRemaining += (item.total_cost - displayMonthly);
+                else categoryRemaining += item.total_cost;
+            } else {
+                if (!isPaid) categoryRemaining += item.monthly_cost;
+            }
+
+            tr.className = isPaid ? 'paid-row' : '';
+            
+            const nameCell = `<span class="editable-cell" onclick="editBudgetItem(${item.id})">${item.name}</span>`;
+
+            if (cat === 'Payback') {
+                const currentDebtDisplay = isPaid ? (item.total_cost - displayMonthly) : item.total_cost;
                 tr.innerHTML = `
                     <td style="cursor:grab; color:#ccc">☰</td>
                     <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
-                    <td>${item.name}</td>
+                    <td>${nameCell}</td>
                     <td class="money-col">£${displayMonthly.toFixed(2)}</td>
                     <td class="money-col">£${currentDebtDisplay.toFixed(2)}</td>
                     <td style="font-size:0.8rem; color:#666;">${monthsDisplay}</td>
@@ -361,7 +358,7 @@ function renderBudget() {
                 tr.innerHTML = `
                     <td style="cursor:grab; color:#ccc">☰</td>
                     <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
-                    <td>${item.name}</td>
+                    <td>${nameCell}</td>
                     <td class="money-col">£${item.monthly_cost.toFixed(2)}</td>
                     <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
                 `;
@@ -369,54 +366,63 @@ function renderBudget() {
             list.appendChild(tr);
         });
 
-        // Update the header number
         totalSpan.innerText = categoryRemaining.toFixed(2);
     });
 }
 
-// --- PAYDAY RESET LOGIC ---
-async function checkPaydayReset() {
-    const lastCheck = localStorage.getItem('last_budget_check_month');
-    const currentMonth = new Date().toISOString().slice(0, 7); // "2026-01"
-
-    // If we haven't stored a date, store today and exit (first run)
-    if (!lastCheck) {
-        localStorage.setItem('last_budget_check_month', currentMonth);
-        return;
-    }
-
-    // If stored month is different from current month -> TRIGGER RESET
-    if (lastCheck !== currentMonth) {
-        console.log("New month detected! Resetting budget...");
-        
-        // Call API to process the math (Deduct totals, uncheck boxes)
-        await fetch('/api/budget_items/reset', { method: 'POST' });
-        
-        // Update local storage so we don't run it again this month
-        localStorage.setItem('last_budget_check_month', currentMonth);
-        
-        // Reload UI
-        fetchBudget();
-        alert("Welcome to a new month! \n\n• Paybacks have been updated.\n• Checkboxes have been reset.");
-    }
-}
-
 // --- MODAL & SAVING ---
-function openBudgetModal(category) {
+
+function openBudgetModal(category, mode = 'bill') {
+    // Reset Modal for New Entry
+    document.getElementById('budget-id').value = ''; // Empty ID = New
+    document.getElementById('budget-type').value = mode; 
     document.getElementById('budget-category').value = category;
-    document.getElementById('budget-modal-title').innerText = `Add to ${category}`;
+    document.getElementById('budget-modal-title').innerText = mode === 'header' ? `Add Header to ${category}` : `Add Bill to ${category}`;
+    
     document.getElementById('budget-name').value = '';
     document.getElementById('budget-monthly').value = '';
     document.getElementById('budget-total').value = '';
-    document.getElementById('budget-date').value = ''; // Reset date
+    document.getElementById('budget-date').value = '';
     
+    // Hide cost fields if adding a Header
+    const costFields = document.getElementById('cost-fields');
+    costFields.style.display = mode === 'header' ? 'none' : 'block';
+
+    // Show Payback fields only if Payback AND not header
     const paybackFields = document.getElementById('payback-fields');
-    paybackFields.style.display = category === 'Payback' ? 'block' : 'none';
+    paybackFields.style.display = (category === 'Payback' && mode !== 'header') ? 'block' : 'none';
     
     document.getElementById('budget-modal').style.display = 'block';
 }
 
+function editBudgetItem(id) {
+    const item = allBudgetItems.find(i => i.id === id);
+    if (!item) return;
+
+    // Populate Modal with existing data
+    document.getElementById('budget-id').value = item.id;
+    document.getElementById('budget-type').value = item.type;
+    document.getElementById('budget-category').value = item.category;
+    document.getElementById('budget-modal-title').innerText = `Edit ${item.name}`;
+    
+    document.getElementById('budget-name').value = item.name;
+    document.getElementById('budget-monthly').value = item.monthly_cost;
+    document.getElementById('budget-total').value = item.total_cost;
+    document.getElementById('budget-date').value = item.final_payment_date || '';
+
+    // Logic to show/hide fields based on what we are editing
+    const costFields = document.getElementById('cost-fields');
+    costFields.style.display = item.type === 'header' ? 'none' : 'block';
+
+    const paybackFields = document.getElementById('payback-fields');
+    paybackFields.style.display = (item.category === 'Payback' && item.type !== 'header') ? 'block' : 'none';
+
+    document.getElementById('budget-modal').style.display = 'block';
+}
+
 async function saveBudgetItem() {
+    const id = document.getElementById('budget-id').value;
+    const type = document.getElementById('budget-type').value;
     const category = document.getElementById('budget-category').value;
     const name = document.getElementById('budget-name').value;
     const monthly = parseFloat(document.getElementById('budget-monthly').value) || 0;
@@ -429,7 +435,8 @@ async function saveBudgetItem() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            category, name, 
+            id, // If ID exists, API will update instead of insert
+            category, name, type,
             monthly_cost: monthly, 
             total_cost: total,
             final_payment_date: finalDate 
