@@ -22,258 +22,215 @@
 
     <main class="main-content">
         
-<section id="dashboard" class="page-section active">
-    <h1>Dashboard</h1>
-    
-    <div class="dashboard-grid">
-        <div class="stat-card" style="background: var(--primary); color: white;">
-            <h2 id="dash-greeting">Hello!</h2>
-            <p id="dash-date" style="opacity: 0.8; margin-top: 5px;">Loading date...</p>
-        </div>
-
-        <div class="stat-card">
-            <span class="stat-label">Outstanding Tasks</span>
-            <div class="stat-number" id="dash-task-count">0</div>
-            <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">
-                <span id="dash-personal-count">0</span> Personal • <span id="dash-work-count">0</span> Work
+        <section id="dashboard" class="page-section active">
+            <h1>Dashboard</h1>
+            <div class="dashboard-grid">
+                <div class="stat-card" style="background: var(--primary); color: white;">
+                    <h2 id="dash-greeting">Hello!</h2>
+                    <p id="dash-date" style="opacity: 0.8; margin-top: 5px;">Loading date...</p>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Outstanding Tasks</span>
+                    <div class="stat-number" id="dash-task-count">0</div>
+                    <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">
+                        <span id="dash-personal-count">0</span> Personal • <span id="dash-work-count">0</span> Work
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-label">Paybacks Remaining</span>
+                    <div class="stat-number" style="color: #e74c3c;">£<span id="dash-debt-left">0.00</span></div>
+                    <p style="font-size: 0.8rem; color: #888;">Keep chipping away at it!</p>
+                </div>
+                <div class="stat-card">
+                    <h3>📝 Up Next</h3>
+                    <ul class="dashboard-list" id="dash-todo-list"><li>Loading...</li></ul>
+                    <a href="#daily" class="nav-link" style="font-size: 0.8rem; margin-top: 10px; display:inline-block;">View Board &rarr;</a>
+                </div>
+                <div class="scratchpad-container">
+                    <h3>💡 Quick Notes / Scratchpad</h3>
+                    <textarea id="dash-scratchpad" class="scratchpad-area" placeholder="Type your ideas here... they will save automatically."></textarea>
+                </div>
+                <div class="stat-card" style="min-height: 300px;">
+                    <h3>📅 Calendar</h3>
+                    <div style="background:#eee; height:100%; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#aaa;">
+                        Google Calendar Area
+                    </div>
+                </div>
             </div>
-        </div>
+        </section>
 
-        <div class="stat-card">
-            <span class="stat-label">Paybacks Remaining</span>
-            <div class="stat-number" style="color: #e74c3c;">£<span id="dash-debt-left">0.00</span></div>
-            <p style="font-size: 0.8rem; color: #888;">Keep chipping away at it!</p>
-        </div>
-
-        <div class="stat-card">
-            <h3>📝 Up Next</h3>
-            <ul class="dashboard-list" id="dash-todo-list">
-                <li>Loading...</li>
-            </ul>
-            <a href="#daily" class="nav-link" style="font-size: 0.8rem; margin-top: 10px; display:inline-block;">View Board &rarr;</a>
-        </div>
-
-        <div class="scratchpad-container">
-            <h3>💡 Quick Notes / Scratchpad</h3>
-            <textarea id="dash-scratchpad" class="scratchpad-area" placeholder="Type your ideas here... they will save automatically."></textarea>
-        </div>
-
-        <div class="stat-card" style="min-height: 300px;">
-            <h3>📅 Calendar</h3>
-            <p style="color:#888; font-size: 0.9rem;">(Edit HTML to embed Google Calendar here)</p>
-            <div style="background:#eee; height:100%; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#aaa;">
-                Google Calendar Area
+        <section id="daily" class="page-section">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Daily Planning</h1>
+                <button onclick="openAddTaskModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Task</button>
             </div>
-        </div>
-    </div>
-</section>
-
-<section id="daily" class="page-section">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Daily Planning</h1>
-        <button onclick="openAddTaskModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Task</button>
-    </div>
-
-    <div class="tab-container">
-        <button class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
-        <button class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
-    </div>
-
-    <div id="view-personal" class="daily-view">
-        <div class="card personal-list" id="personal-task-list">
-            <p>Loading tasks...</p>
-        </div>
-    </div>
-
-    <div id="view-work" class="daily-view kanban-board" style="display:none;">
-        <div class="kanban-column" id="col-todo">
-            <div class="kanban-header">To Do <span id="count-todo">0</span></div>
-            <div class="task-container" data-status="Todo"></div>
-        </div>
-        <div class="kanban-column" id="col-inprogress">
-            <div class="kanban-header">In Progress <span id="count-inprogress">0</span></div>
-            <div class="task-container" data-status="In-Progress"></div>
-        </div>
-        <div class="kanban-column" id="col-onhold">
-            <div class="kanban-header">On Hold <span id="count-onhold">0</span></div>
-            <div class="task-container" data-status="On-Hold"></div>
-        </div>
-        <div class="kanban-column" id="col-done">
-            <div class="kanban-header">Completed <span id="count-done">0</span></div>
-            <div class="task-container" data-status="Done"></div>
-        </div>
-    </div>
-</section>
-
-<div id="task-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
-    <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
-        <h2>Add New Task</h2>
-        <input type="text" id="new-task-title" placeholder="Task Title" style="width:100%; padding:0.5rem; margin:1rem 0;">
-        <select id="new-task-type" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
-            <option value="Personal">Personal</option>
-            <option value="Work">Work</option>
-        </select>
-        <button onclick="saveNewTask()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
-        <button onclick="document.getElementById('task-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
-    </div>
-</div>
+            <div class="tab-container">
+                <button class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
+                <button class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
+            </div>
+            <div id="view-personal" class="daily-view">
+                <div class="card personal-list" id="personal-task-list"><p>Loading tasks...</p></div>
+            </div>
+            <div id="view-work" class="daily-view kanban-board" style="display:none;">
+                <div class="kanban-column" id="col-todo">
+                    <div class="kanban-header">To Do <span id="count-todo">0</span></div>
+                    <div class="task-container" data-status="Todo"></div>
+                </div>
+                <div class="kanban-column" id="col-inprogress">
+                    <div class="kanban-header">In Progress <span id="count-inprogress">0</span></div>
+                    <div class="task-container" data-status="In-Progress"></div>
+                </div>
+                <div class="kanban-column" id="col-onhold">
+                    <div class="kanban-header">On Hold <span id="count-onhold">0</span></div>
+                    <div class="task-container" data-status="On-Hold"></div>
+                </div>
+                <div class="kanban-column" id="col-done">
+                    <div class="kanban-header">Completed <span id="count-done">0</span></div>
+                    <div class="task-container" data-status="Done"></div>
+                </div>
+            </div>
+        </section>
 
         <section id="monthly" class="page-section">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Monthly Goals (January)</h1>
-        <button onclick="openGoalModal('Monthly')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Goal</button>
-    </div>
-
-    <div id="monthly-goals-container" class="goals-grid">
-        </div>
-</section>
-
-<div id="goal-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="background:white; width:500px; max-width:90%; margin:50px auto; padding:2rem; border-radius:8px; max-height: 90vh; overflow-y: auto;">
-        <h2 id="goal-modal-title">New Goal</h2>
-        
-        <input type="hidden" id="goal-id"> <input type="hidden" id="goal-type"> <label style="display:block; margin-top:10px; font-size:0.9rem;">Goal Title</label>
-        <input type="text" id="goal-title-input" placeholder="e.g. Go to Gym" style="width:100%; padding:0.5rem; margin-top:5px;">
-
-        <label style="display:block; margin-top:10px; font-size:0.9rem;">Image URL (Optional)</label>
-        <input type="text" id="goal-image-input" placeholder="https://..." style="width:100%; padding:0.5rem; margin-top:5px;">
-
-        <div style="display:flex; gap:10px; margin-top:10px;">
-            <div style="flex:1;">
-                <label style="font-size:0.9rem;">Current Progress</label>
-                <input type="number" id="goal-current-input" value="0" style="width:100%; padding:0.5rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Monthly Goals (January)</h1>
+                <button onclick="openGoalModal('Monthly')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Goal</button>
             </div>
-            <div style="flex:1;">
-                <label style="font-size:0.9rem;">Target Goal</label>
-                <input type="number" id="goal-target-input" value="1" style="width:100%; padding:0.5rem;">
+            <div id="monthly-goals-container" class="goals-grid"></div>
+        </section>
+
+        <section id="yearly" class="page-section">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Yearly Goals (2026)</h1>
+                <button onclick="openGoalModal('Yearly')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Goal</button>
             </div>
-        </div>
+            <div id="yearly-goals-container" class="goals-grid"></div>
+        </section>
 
-        <label style="display:block; margin-top:15px; font-size:0.9rem;">My Notes (How is it going?)</label>
-        <textarea id="goal-notes-input" class="notes-area" placeholder="Journal your progress here..."></textarea>
+        <section id="habits" class="page-section">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Habit Tracker</h1>
+                <button onclick="openGoalModal('Habit')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Habit</button>
+            </div>
+            <div id="habit-goals-container" class="goals-grid"></div>
+        </section>
 
-        <div style="margin-top:20px; text-align:right;">
-            <button onclick="document.getElementById('goal-modal').style.display='none'" style="margin-right:10px; padding:0.5rem 1rem; cursor:pointer;">Cancel</button>
-            <button onclick="saveGoal()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save Goal</button>
-        </div>
-    </div>
-</div>
+        <section id="budget" class="page-section">
+            <h1>Budget Tracker</h1>
+            <div class="budget-section">
+                <div class="budget-header">
+                    <h3>🏦 Barclays Bills</h3>
+                    <div class="budget-total">Total: £<span id="total-barclays">0.00</span></div>
+                </div>
+                <table class="budget-table">
+                    <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
+                    <tbody id="list-barclays"></tbody>
+                </table>
+                <button onclick="openBudgetModal('Barclays')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
+            </div>
+            <div class="budget-section">
+                <div class="budget-header">
+                    <h3>💳 Monzo Bills</h3>
+                    <div class="budget-total">Total: £<span id="total-monzo">0.00</span></div>
+                </div>
+                <table class="budget-table">
+                    <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
+                    <tbody id="list-monzo"></tbody>
+                </table>
+                <button onclick="openBudgetModal('Monzo')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
+            </div>
+            <div class="budget-section">
+                <div class="budget-header">
+                    <h3>📉 Paybacks (Finance)</h3>
+                    <div class="budget-total">Left: £<span id="total-payback">0.00</span></div>
+                </div>
+                <table class="budget-table">
+                    <thead><tr><th>Paid</th><th>Item</th><th>Monthly</th><th>Total Left</th><th>Action</th></tr></thead>
+                    <tbody id="list-payback"></tbody>
+                </table>
+                <button onclick="openBudgetModal('Payback')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Payback</button>
+            </div>
+        </section>
 
-<section id="yearly" class="page-section">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Yearly Goals (2026)</h1>
-        <button onclick="openGoalModal('Yearly')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Goal</button>
-    </div>
-    <div id="yearly-goals-container" class="goals-grid"></div>
-</section>
-
-<section id="habits" class="page-section">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Habit Tracker</h1>
-        <button onclick="openGoalModal('Habit')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Habit</button>
-    </div>
-    <div id="habit-goals-container" class="goals-grid"></div>
-</section>
-
-<section id="budget" class="page-section">
-    <h1>Budget Tracker</h1>
-    
-    <div class="budget-section">
-        <div class="budget-header">
-            <h3>🏦 Barclays Bills</h3>
-            <div class="budget-total">Total: £<span id="total-barclays">0.00</span></div>
-        </div>
-        <table class="budget-table">
-            <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
-            <tbody id="list-barclays"></tbody>
-        </table>
-        <button onclick="openBudgetModal('Barclays')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
-    </div>
-
-    <div class="budget-section">
-        <div class="budget-header">
-            <h3>💳 Monzo Bills</h3>
-            <div class="budget-total">Total: £<span id="total-monzo">0.00</span></div>
-        </div>
-        <table class="budget-table">
-            <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
-            <tbody id="list-monzo"></tbody>
-        </table>
-        <button onclick="openBudgetModal('Monzo')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
-    </div>
-
-    <div class="budget-section">
-        <div class="budget-header">
-            <h3>📉 Paybacks (Finance)</h3>
-            <div class="budget-total">Left: £<span id="total-payback">0.00</span></div>
-        </div>
-        <table class="budget-table">
-            <thead><tr><th>Paid</th><th>Item</th><th>Monthly</th><th>Total Left</th><th>Action</th></tr></thead>
-            <tbody id="list-payback"></tbody>
-        </table>
-        <button onclick="openBudgetModal('Payback')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Payback</button>
-    </div>
-</section>
-
-<div id="budget-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
-        <h2 id="budget-modal-title">Add Item</h2>
-        <input type="hidden" id="budget-category">
-        
-        <input type="text" id="budget-name" placeholder="Item Name (e.g. Council Tax)" style="width:100%; padding:0.5rem; margin:1rem 0;">
-        <input type="number" id="budget-monthly" placeholder="Monthly Cost (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
-        
-        <div id="payback-fields" style="display:none;">
-            <input type="number" id="budget-total" placeholder="Total Debt Amount (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
-        </div>
-
-        <button onclick="saveBudgetItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
-        <button onclick="document.getElementById('budget-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
-    </div>
-</div>
-
-<section id="vision" class="page-section">
-    <div style="display:flex; justify-content:space-between; align-items:center;">
-        <h1>Vision Board</h1>
-        <button onclick="openVisionModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ Add Image</button>
-    </div>
-
-    <div class="vision-filter">
-        <button class="filter-btn active" onclick="filterVision('All')">All</button>
-        <button class="filter-btn" onclick="filterVision('Lifestyle')">Lifestyle</button>
-        <button class="filter-btn" onclick="filterVision('Housing')">Housing</button>
-        <button class="filter-btn" onclick="filterVision('Money')">Money</button>
-        <button class="filter-btn" onclick="filterVision('Travel')">Travel</button>
-    </div>
-
-    <div id="vision-grid" class="vision-grid">
-        </div>
-</section>
-
-<div id="vision-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-    <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
-        <h2>Add to Vision Board</h2>
-        
-        <label style="display:block; margin-top:10px;">Title / Affirmation</label>
-        <input type="text" id="vision-title" placeholder="e.g. My Dream Home" style="width:100%; padding:0.5rem;">
-
-        <label style="display:block; margin-top:10px;">Image URL</label>
-        <input type="text" id="vision-url" placeholder="https://..." style="width:100%; padding:0.5rem;">
-
-        <label style="display:block; margin-top:10px;">Section</label>
-        <select id="vision-section" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
-            <option value="Lifestyle">Lifestyle</option>
-            <option value="Housing">Housing</option>
-            <option value="Money">Money</option>
-            <option value="Travel">Travel</option>
-        </select>
-
-        <button onclick="saveVisionItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
-        <button onclick="document.getElementById('vision-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
-    </div>
-</div>
+        <section id="vision" class="page-section">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Vision Board</h1>
+                <button onclick="openVisionModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ Add Image</button>
+            </div>
+            <div class="vision-filter">
+                </div>
+            <div id="vision-grid" class="vision-grid"></div>
+        </section>
 
     </main>
+
+    <div id="task-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+        <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
+            <h2>Add New Task</h2>
+            <input type="text" id="new-task-title" placeholder="Task Title" style="width:100%; padding:0.5rem; margin:1rem 0;">
+            <select id="new-task-type" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+                <option value="Personal">Personal</option>
+                <option value="Work">Work</option>
+            </select>
+            <button onclick="saveNewTask()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
+            <button onclick="document.getElementById('task-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="goal-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div style="background:white; width:500px; max-width:90%; margin:50px auto; padding:2rem; border-radius:8px; max-height: 90vh; overflow-y: auto;">
+            <h2 id="goal-modal-title">New Goal</h2>
+            <input type="hidden" id="goal-id"> <input type="hidden" id="goal-type">
+            <label style="display:block; margin-top:10px; font-size:0.9rem;">Goal Title</label>
+            <input type="text" id="goal-title-input" placeholder="e.g. Go to Gym" style="width:100%; padding:0.5rem; margin-top:5px;">
+            <label style="display:block; margin-top:10px; font-size:0.9rem;">Image URL (Optional)</label>
+            <input type="text" id="goal-image-input" placeholder="https://..." style="width:100%; padding:0.5rem; margin-top:5px;">
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <div style="flex:1;">
+                    <label style="font-size:0.9rem;">Current Progress</label>
+                    <input type="number" id="goal-current-input" value="0" style="width:100%; padding:0.5rem;">
+                </div>
+                <div style="flex:1;">
+                    <label style="font-size:0.9rem;">Target Goal</label>
+                    <input type="number" id="goal-target-input" value="1" style="width:100%; padding:0.5rem;">
+                </div>
+            </div>
+            <label style="display:block; margin-top:15px; font-size:0.9rem;">My Notes (How is it going?)</label>
+            <textarea id="goal-notes-input" class="notes-area" placeholder="Journal your progress here..."></textarea>
+            <div style="margin-top:20px; text-align:right;">
+                <button onclick="document.getElementById('goal-modal').style.display='none'" style="margin-right:10px; padding:0.5rem 1rem; cursor:pointer;">Cancel</button>
+                <button onclick="saveGoal()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save Goal</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="budget-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
+            <h2 id="budget-modal-title">Add Item</h2>
+            <input type="hidden" id="budget-category">
+            <input type="text" id="budget-name" placeholder="Item Name (e.g. Council Tax)" style="width:100%; padding:0.5rem; margin:1rem 0;">
+            <input type="number" id="budget-monthly" placeholder="Monthly Cost (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+            <div id="payback-fields" style="display:none;">
+                <input type="number" id="budget-total" placeholder="Total Debt Amount (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+            </div>
+            <button onclick="saveBudgetItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
+            <button onclick="document.getElementById('budget-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+
+    <div id="vision-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+        <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
+            <h2>Add to Vision Board</h2>
+            <label style="display:block; margin-top:10px;">Title / Affirmation</label>
+            <input type="text" id="vision-title" placeholder="e.g. My Dream Home" style="width:100%; padding:0.5rem;">
+            <label style="display:block; margin-top:10px;">Image URL</label>
+            <input type="text" id="vision-url" placeholder="https://..." style="width:100%; padding:0.5rem;">
+            <label style="display:block; margin-top:10px;">Section</label>
+            <select id="vision-section" style="width:100%; padding:0.5rem; margin-bottom:1rem;"></select>
+            <button onclick="saveVisionItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
+            <button onclick="document.getElementById('vision-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
 
     <script src="app.js"></script>
 </body>
