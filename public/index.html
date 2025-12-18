@@ -134,7 +134,10 @@
                     </thead>
                     <tbody id="list-barclays"></tbody>
                 </table>
-                <button onclick="openBudgetModal('Barclays')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
+                <div style="margin-top:10px;">
+    <button onclick="openBudgetModal('Barclays', 'bill')" style="color:var(--accent); background:none; border:none; cursor:pointer; margin-right:15px;">+ Add Bill</button>
+    <button onclick="openBudgetModal('Barclays', 'header')" style="color:#888; background:none; border:none; cursor:pointer; font-size:0.9rem;">+ Add Section Header</button>
+</div>
             </div>
 
             <div class="budget-section">
@@ -153,7 +156,10 @@
                     </thead>
                     <tbody id="list-monzo"></tbody>
                 </table>
-                <button onclick="openBudgetModal('Monzo')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
+                <div style="margin-top:10px;">
+    <button onclick="openBudgetModal('Monzo', 'bill')" style="color:var(--accent); background:none; border:none; cursor:pointer; margin-right:15px;">+ Add Bill</button>
+    <button onclick="openBudgetModal('Monzo', 'header')" style="color:#888; background:none; border:none; cursor:pointer; font-size:0.9rem;">+ Add Section Header</button>
+</div>
             </div>
 
             <div class="budget-section">
@@ -174,7 +180,10 @@
                     </thead>
                     <tbody id="list-payback"></tbody>
                 </table>
-                <button onclick="openBudgetModal('Payback')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Payback</button>
+                <div style="margin-top:10px;">
+    <button onclick="openBudgetModal('Payback', 'bill')" style="color:var(--accent); background:none; border:none; cursor:pointer; margin-right:15px;">+ Add Bill</button>
+    <button onclick="openBudgetModal('Payback', 'header')" style="color:#888; background:none; border:none; cursor:pointer; font-size:0.9rem;">+ Add Section Header</button>
+</div>
             </div>
         </section>
 
@@ -231,24 +240,29 @@
     </div>
 
     <div id="budget-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
-        <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
-            <h2 id="budget-modal-title">Add Item</h2>
-            <input type="hidden" id="budget-category">
-            
-            <input type="text" id="budget-name" placeholder="Item Name (e.g. Council Tax)" style="width:100%; padding:0.5rem; margin:1rem 0;">
+    <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
+        <h2 id="budget-modal-title">Add Item</h2>
+        
+        <input type="hidden" id="budget-id">
+        <input type="hidden" id="budget-category">
+        <input type="hidden" id="budget-type">
+        
+        <input type="text" id="budget-name" placeholder="Name (e.g. Council Tax)" style="width:100%; padding:0.5rem; margin:1rem 0;">
+        
+        <div id="cost-fields">
             <input type="number" id="budget-monthly" placeholder="Monthly Cost (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
             
             <div id="payback-fields" style="display:none;">
                 <input type="number" id="budget-total" placeholder="Total Debt Amount (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
-                
                 <label style="display:block; font-size:0.8rem; margin-bottom:5px;">Final Payment Date (Optional)</label>
                 <input type="date" id="budget-date" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
             </div>
-
-            <button onclick="saveBudgetItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
-            <button onclick="document.getElementById('budget-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
         </div>
+
+        <button onclick="saveBudgetItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
+        <button onclick="document.getElementById('budget-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
     </div>
+</div>
 
     <div id="vision-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
         <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
