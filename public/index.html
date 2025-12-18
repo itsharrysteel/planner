@@ -30,12 +30,55 @@
             </div>
         </section>
 
-        <section id="daily" class="page-section">
-            <h1>Daily Planning</h1>
-            <div class="card">
-                <p>Kanban and Daily Tasks go here.</p>
-            </div>
-        </section>
+<section id="daily" class="page-section">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>Daily Planning</h1>
+        <button onclick="openAddTaskModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Task</button>
+    </div>
+
+    <div class="tab-container">
+        <button class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
+        <button class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
+    </div>
+
+    <div id="view-personal" class="daily-view">
+        <div class="card personal-list" id="personal-task-list">
+            <p>Loading tasks...</p>
+        </div>
+    </div>
+
+    <div id="view-work" class="daily-view kanban-board" style="display:none;">
+        <div class="kanban-column" id="col-todo">
+            <div class="kanban-header">To Do <span id="count-todo">0</span></div>
+            <div class="task-container" data-status="Todo"></div>
+        </div>
+        <div class="kanban-column" id="col-inprogress">
+            <div class="kanban-header">In Progress <span id="count-inprogress">0</span></div>
+            <div class="task-container" data-status="In-Progress"></div>
+        </div>
+        <div class="kanban-column" id="col-onhold">
+            <div class="kanban-header">On Hold <span id="count-onhold">0</span></div>
+            <div class="task-container" data-status="On-Hold"></div>
+        </div>
+        <div class="kanban-column" id="col-done">
+            <div class="kanban-header">Completed <span id="count-done">0</span></div>
+            <div class="task-container" data-status="Done"></div>
+        </div>
+    </div>
+</section>
+
+<div id="task-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+    <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
+        <h2>Add New Task</h2>
+        <input type="text" id="new-task-title" placeholder="Task Title" style="width:100%; padding:0.5rem; margin:1rem 0;">
+        <select id="new-task-type" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+            <option value="Personal">Personal</option>
+            <option value="Work">Work</option>
+        </select>
+        <button onclick="saveNewTask()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
+        <button onclick="document.getElementById('task-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
+    </div>
+</div>
 
         <section id="monthly" class="page-section">
             <h1>Monthly Goals</h1>
