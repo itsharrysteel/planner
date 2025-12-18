@@ -150,8 +150,10 @@ async function fetchGoals() {
     try {
         const res = await fetch('/api/goals');
         allGoals = await res.json();
+        // Render all 3 types to their specific containers
         renderGoals('Monthly', 'monthly-goals-container');
-        // We will add Yearly/Habit rendering here later
+        renderGoals('Yearly', 'yearly-goals-container');
+        renderGoals('Habit', 'habit-goals-container');
     } catch (err) {
         console.error("Error loading goals", err);
     }
