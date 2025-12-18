@@ -4,76 +4,76 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2026 North Star</title>
-    <style>
-        body { font-family: sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; }
-        .status { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
-        .success { background: #d4edda; color: #155724; }
-        .error { background: #f8d7da; color: #721c24; }
-        button { padding: 0.5rem 1rem; cursor: pointer; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>2026 North Star Planner</h1>
-    
-    <div id="status-box" class="status" style="display:none;">Loading...</div>
 
-    <h2>Database Test: Tasks</h2>
-    <ul id="task-list"></ul>
+    <nav class="sidebar">
+        <div class="brand">✨ 2026 North Star</div>
+        
+        <a href="#dashboard" class="nav-link active">Dashboard</a>
+        <a href="#daily" class="nav-link">Daily Planning</a>
+        <a href="#monthly" class="nav-link">Monthly Goals</a>
+        <a href="#yearly" class="nav-link">Yearly Goals</a>
+        <a href="#habits" class="nav-link">Habit Tracker</a>
+        <a href="#budget" class="nav-link">Budget Tracker</a>
+        <a href="#vision" class="nav-link">Vision Board</a>
+    </nav>
 
-    <button onclick="addTask()">+ Test Add Task</button>
+    <main class="main-content">
+        
+        <section id="dashboard" class="page-section active">
+            <h1>Dashboard</h1>
+            <div class="card">
+                <h3>Welcome back.</h3>
+                <p>This is your North Star overview. Widgets loading soon...</p>
+            </div>
+        </section>
 
-    <script>
-        // 1. Fetch Tasks on Load
-        async function loadTasks() {
-            const statusBox = document.getElementById('status-box');
-            try {
-                const response = await fetch('/api/tasks'); // Calls our backend function
-                if (!response.ok) throw new Error('Failed to connect to API');
-                
-                const tasks = await response.json();
-                
-                statusBox.style.display = 'block';
-                statusBox.className = 'status success';
-                statusBox.innerText = '✅ Connection Successful! Database is reachable.';
+        <section id="daily" class="page-section">
+            <h1>Daily Planning</h1>
+            <div class="card">
+                <p>Kanban and Daily Tasks go here.</p>
+            </div>
+        </section>
 
-                const list = document.getElementById('task-list');
-                list.innerHTML = tasks.length ? '' : '<li>No tasks found (Database is empty but working)</li>';
-                
-                tasks.forEach(task => {
-                    const li = document.createElement('li');
-                    li.textContent = `${task.title} (${task.status})`;
-                    list.appendChild(li);
-                });
+        <section id="monthly" class="page-section">
+            <h1>Monthly Goals</h1>
+            <div class="card">
+                <p>Goal cards and progress sliders go here.</p>
+            </div>
+        </section>
 
-            } catch (err) {
-                statusBox.style.display = 'block';
-                statusBox.className = 'status error';
-                statusBox.innerText = '❌ Error: ' + err.message;
-                console.error(err);
-            }
-        }
+        <section id="yearly" class="page-section">
+            <h1>Yearly Goals</h1>
+            <div class="card">
+                <p>Big picture goals go here.</p>
+            </div>
+        </section>
 
-        // 2. Add a Test Task
-        async function addTask() {
-            try {
-                const res = await fetch('/api/tasks/add', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        title: 'Test Task ' + new Date().toLocaleTimeString(),
-                        due_date: '2026-01-01',
-                        type: 'Personal'
-                    })
-                });
-                if (res.ok) {
-                    loadTasks(); // Refresh list
-                }
-            } catch (err) {
-                alert('Failed to add task');
-            }
-        }
+        <section id="habits" class="page-section">
+            <h1>Habit Tracker</h1>
+            <div class="card">
+                <p>Habit streaks go here.</p>
+            </div>
+        </section>
 
-        loadTasks();
-    </script>
+        <section id="budget" class="page-section">
+            <h1>Budget Tracker</h1>
+            <div class="card">
+                <p>Financial tables go here.</p>
+            </div>
+        </section>
+
+        <section id="vision" class="page-section">
+            <h1>Vision Board</h1>
+            <div class="card">
+                <p>Drag and drop images go here.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script src="app.js"></script>
 </body>
 </html>
