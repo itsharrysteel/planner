@@ -69,6 +69,19 @@ export async function onRequest(context) {
          return Response.json(info);
     }
 
+    // --- VISION BOARD ---
+    if (resource === 'vision_board' && path[2] === 'add') {
+      const info = await db.prepare(
+        'INSERT INTO vision_board (section, title, image_url) VALUES (?, ?, ?)'
+      ).bind(data.section, data.title, data.image_url).run();
+      return Response.json(info);
+    }
+
+    if (resource === 'vision_board' && path[2] === 'delete') {
+      const info = await db.prepare('DELETE FROM vision_board WHERE id = ?').bind(data.id).run();
+      return Response.json(info);
+    }
+
   } // <--- The POST block now ends HERE
 
   return new Response('Not Found', { status: 404 });
