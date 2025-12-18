@@ -53,7 +53,7 @@
                 <div class="stat-card" style="min-height: 300px;">
                     <h3>📅 Calendar</h3>
                     <div style="background:#eee; height:100%; border-radius:8px; display:flex; align-items:center; justify-content:center; color:#aaa;">
-                        Google Calendar Area
+                        Google Calendar Placeholder
                     </div>
                 </div>
             </div>
@@ -117,35 +117,61 @@
 
         <section id="budget" class="page-section">
             <h1>Budget Tracker</h1>
+            
             <div class="budget-section">
                 <div class="budget-header">
                     <h3>🏦 Barclays Bills</h3>
                     <div class="budget-total">Total: £<span id="total-barclays">0.00</span></div>
                 </div>
                 <table class="budget-table">
-                    <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width:30px"></th> <th style="width:30px">Paid</th>
+                            <th>Bill Name</th>
+                            <th>Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
                     <tbody id="list-barclays"></tbody>
                 </table>
                 <button onclick="openBudgetModal('Barclays')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
             </div>
+
             <div class="budget-section">
                 <div class="budget-header">
                     <h3>💳 Monzo Bills</h3>
                     <div class="budget-total">Total: £<span id="total-monzo">0.00</span></div>
                 </div>
                 <table class="budget-table">
-                    <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width:30px"></th> <th style="width:30px">Paid</th>
+                            <th>Bill Name</th>
+                            <th>Amount</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
                     <tbody id="list-monzo"></tbody>
                 </table>
                 <button onclick="openBudgetModal('Monzo')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
             </div>
+
             <div class="budget-section">
                 <div class="budget-header">
                     <h3>📉 Paybacks (Finance)</h3>
                     <div class="budget-total">Left: £<span id="total-payback">0.00</span></div>
                 </div>
                 <table class="budget-table">
-                    <thead><tr><th>Paid</th><th>Item</th><th>Monthly</th><th>Total Left</th><th>Action</th></tr></thead>
+                    <thead>
+                        <tr>
+                            <th style="width:30px"></th> <th style="width:30px">Paid</th>
+                            <th>Item</th>
+                            <th>Monthly</th>
+                            <th>Total Left</th>
+                            <th>Months Left</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
                     <tbody id="list-payback"></tbody>
                 </table>
                 <button onclick="openBudgetModal('Payback')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Payback</button>
@@ -208,11 +234,17 @@
         <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
             <h2 id="budget-modal-title">Add Item</h2>
             <input type="hidden" id="budget-category">
+            
             <input type="text" id="budget-name" placeholder="Item Name (e.g. Council Tax)" style="width:100%; padding:0.5rem; margin:1rem 0;">
             <input type="number" id="budget-monthly" placeholder="Monthly Cost (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+            
             <div id="payback-fields" style="display:none;">
                 <input type="number" id="budget-total" placeholder="Total Debt Amount (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+                
+                <label style="display:block; font-size:0.8rem; margin-bottom:5px;">Final Payment Date (Optional)</label>
+                <input type="date" id="budget-date" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
             </div>
+
             <button onclick="saveBudgetItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
             <button onclick="document.getElementById('budget-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
         </div>
