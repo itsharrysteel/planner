@@ -65,10 +65,11 @@
         <button onclick="openAddTaskModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Task</button>
     </div>
 
-    <div class="tab-container">
-        <button id="tab-personal" class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
-        <button id="tab-work" class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
-    </div>
+<div class="tab-container">
+    <button id="tab-personal" class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
+    
+    <button id="tab-work" class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
+</div>
             <div id="view-personal" class="daily-view">
                 <div class="card personal-list" id="personal-task-list"><p>Loading tasks...</p></div>
             </div>
