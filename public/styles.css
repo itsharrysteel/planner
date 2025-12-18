@@ -267,26 +267,37 @@ column-count: 4;
 @media (max-width: 900px) { .vision-grid { column-count: 3; } }
 @media (max-width: 600px) { .vision-grid { column-count: 2; } }
 
+/* MASONRY LAYOUT FIX */
+.vision-grid {
+    column-count: 4; 
+    column-gap: 1.5rem;
+    width: 100%; /* Force full width */
+}
+
+@media (max-width: 1100px) { .vision-grid { column-count: 3; } }
+@media (max-width: 800px) { .vision-grid { column-count: 2; } }
+@media (max-width: 500px) { .vision-grid { column-count: 1; } }
+
 .vision-card {
-    break-inside: avoid-column; /* Crucial: Stops cards splitting across columns */
-    display: inline-block; /* Helps Safari/Chrome calculate height correctly */
-    width: 100%; /* Ensures it fills the column */
+    /* Prevents the card from being sliced in half by a column break */
+    break-inside: avoid;
+    -webkit-column-break-inside: avoid;
+    
+    /* Ensures the card behaves as a solid block */
+    display: inline-block;
+    width: 100%;
+    
     margin-bottom: 1.5rem;
     background: white; border-radius: 12px; overflow: hidden;
     box-shadow: 0 4px 10px rgba(0,0,0,0.08);
     position: relative; 
-    transition: transform 0.2s, box-shadow 0.2s;
-    /* Fix for the ghost shadow issue */
-    backface-visibility: hidden; 
-    transform: translateZ(0); 
+    transition: transform 0.2s;
 }
 
-/* Dragging Styles - Simplified to reduce visual glitches */
+/* Dragging visual adjustments */
 .vision-card.dragging {
-    opacity: 0.5;
+    opacity: 0.4;
     border: 2px dashed var(--accent);
-    transform: scale(0.95); /* Slight shrink to show it's picked up */
-    box-shadow: none; /* Remove shadow while dragging to clean up visuals */
 }
 
 .vision-card.drag-over {
