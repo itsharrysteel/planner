@@ -141,3 +141,152 @@ function switchDailyTab(tab) {
 document.addEventListener('DOMContentLoaded', () => {
     fetchTasks();
 });
+
+/* --- GOALS LOGIC (Monthly / Yearly / Habits) --- */
+
+let allGoals = [];
+
+async function fetchGoals() {
+    try {
+        const res = await fetch('/api/goals');
+        allGoals = await res.json();
+        renderGoals('Monthly', 'monthly-goals-container');
+        // We will add Yearly/Habit rendering here later
+    } catch (err) {
+        console.error("Error loading goals", err);
+    }
+}
+
+function renderGoals(type, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    container.innerHTML = '';
+    
+    const filtered = allGoals.filter(g => g.type === type);
+
+    filtered.forEach(goal => {
+        // Calculate percentage for bar
+        const percent = Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100));
+        
+        // Use a placeholder if no image provided
+        const bgImage = goal.image_url ? `url('${goal.image_url}')` : 'none';
+        const bgColor = goal.image_url ? 'transparent' : '#e0e0e0';
+
+        const html = `
+            <div class="goal-card">
+                <div class="goal-image" style="background-image: ${bgImage}; background-color: ${bgColor}"></div>
+                <div class="goal-content" onclick="editGoal(${goal.id})">
+                    <div class="goal-title">${goal.title}</div>
+                    <div class="progress-container">
+                        <div class="progress-fill" style="width: ${percent}%"></div>
+                    </div>
+                    <div class="goal-stats">
+                        <span>${percent}% Complete</span>
+                        <span>${goal.current_amount} / ${goal.target_amount}</span>
+                    </div>
+                </div>
+                <div class="goal-actions">
+                    <button class="action-btn" onclick="quickUpdateGoal(${goal.id}, -1)" title="Decrease">-</button>
+                    <button class="action-btn" onclick="editGoal(${goal.id})" style="font-size:0.9rem">Details / Notes</button>
+                    <button class="action-btn" onclick="quickUpdateGoal(${goal.id}, 1)" title="Increase">+</button>
+                </div>
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', html);
+    });
+}
+
+// 1. Open Modal for NEW Goal
+function openGoalModal(type) {
+    document.getElementById('goal-id').value = ''; // Empty ID = New
+    document.getElementById('goal-type').value = type;
+    document.getElementById('goal-modal-title').innerText = `New ${type} Goal`;
+    
+    // Reset fields
+    document.getElementById('goal-title-input').value = '';
+    document.getElementById('goal-image-input').value = '';
+    document.getElementById('goal-current-input').value = '0';
+    document.getElementById('goal-target-input').value = '10';
+    document.getElementById('goal-notes-input').value = '';
+    
+    document.getElementById('goal-modal').style.display = 'block';
+}
+
+// 2. Open Modal to EDIT Goal (and view notes)
+function editGoal(id) {
+    const goal = allGoals.find(g => g.id === id);
+    if (!goal) return;
+
+    document.getElementById('goal-id').value = goal.id;
+    document.getElementById('goal-type').value = goal.type;
+    document.getElementById('goal-modal-title').innerText = `Edit ${goal.type} Goal`;
+
+    document.getElementById('goal-title-input').value = goal.title;
+    document.getElementById('goal-image-input').value = goal.image_url || '';
+    document.getElementById('goal-current-input').value = goal.current_amount;
+    document.getElementById('goal-target-input').value = goal.target_amount;
+    document.getElementById('goal-notes-input').value = goal.notes || '';
+
+    document.getElementById('goal-modal').style.display = 'block';
+}
+
+// 3. Save (Create or Update)
+async function saveGoal() {
+    const id = document.getElementById('goal-id').value;
+    const type = document.getElementById('goal-type').value;
+    const title = document.getElementById('goal-title-input').value;
+    const image_url = document.getElementById('goal-image-input').value;
+    const current = parseInt(document.getElementById('goal-current-input').value) || 0;
+    const target = parseInt(document.getElementById('goal-target-input').value) || 1;
+    const notes = document.getElementById('goal-notes-input').value;
+
+    if (!title) return alert("Title is required");
+
+    // Construct the payload
+    const payload = { title, type, image_url, current_amount: current, target_amount: target, notes };
+
+    let url = '/api/goals/add';
+    if (id) {
+        url = '/api/goals/update';
+        payload.id = id;
+    }
+
+    // Since we haven't written specific Add/Update routes for Goals in API yet,
+    // we need to make sure `functions/api/[[route]].js` can handle this.
+    // (See step below to check your API file).
+    
+    await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    document.getElementById('goal-modal').style.display = 'none';
+    fetchGoals();
+}
+
+// 4. Quick +/- Button Logic
+async function quickUpdateGoal(id, change) {
+    const goal = allGoals.find(g => g.id === id);
+    if(!goal) return;
+    
+    const newAmount = Math.max(0, goal.current_amount + change); // Prevent negative
+    
+    // Optimistic UI update (update screen before DB replies to make it feel fast)
+    goal.current_amount = newAmount;
+    renderGoals(goal.type, 'monthly-goals-container'); 
+
+    // Send to DB
+    await fetch('/api/goals/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: goal.id, current_amount: newAmount })
+    });
+}
+
+// Update initialization to load goals too
+document.addEventListener('DOMContentLoaded', () => {
+    fetchTasks();
+    fetchGoals();
+});
