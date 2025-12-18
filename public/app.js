@@ -296,61 +296,76 @@ function renderBudget() {
 
         list.innerHTML = '';
         const items = allBudgetItems.filter(i => i.category === cat);
-        let total = 0;
+        let categoryTotal = 0;
 
         items.forEach(item => {
             const isPaid = item.is_paid_this_month === 1;
             
-            // Calc Totals
-            if (cat === 'Payback') total += (item.total_cost || 0); 
-            else total += item.monthly_cost;
+            // --- LOGIC START ---
+            let displayMonthly = item.monthly_cost;
+            let monthsDisplay = "-";
+
+            if (cat === 'Payback') {
+                // 1. Calculate Months Left
+                if (item.final_payment_date) {
+                    const now = new Date();
+                    const due = new Date(item.final_payment_date);
+                    
+                    // accurate month difference (handles years correctly)
+                    const monthsDiff = (due.getFullYear() - now.getFullYear()) * 12 + (due.getMonth() - now.getMonth());
+                    
+                    // Ensure we don't divide by zero or negative
+                    const monthsLeft = Math.max(1, monthsDiff); 
+                    
+                    // 2. Calculate Required Monthly Payment
+                    // Formula: Total Debt / Months Remaining
+                    displayMonthly = item.total_cost / monthsLeft;
+                    
+                    monthsDisplay = `${monthsLeft} mths`;
+                }
+                
+                // Add to the category total (Sum of DEBT remaining)
+                categoryTotal += (item.total_cost || 0);
+
+            } else {
+                // Normal bills just add the monthly cost
+                categoryTotal += item.monthly_cost;
+            }
+            // --- LOGIC END ---
 
             const tr = document.createElement('tr');
             tr.className = isPaid ? 'paid-row' : '';
             
-            // Drag & Drop Attributes
+            // Drag & Drop Setup
             tr.draggable = true;
             tr.dataset.id = item.id;
-            tr.dataset.cat = cat; // Ensure we only drag within same table
+            tr.dataset.cat = cat;
             addBudgetDragEvents(tr);
 
-            // Special Logic for Payback Columns
+            // Render Row
             if (cat === 'Payback') {
-                // Calculate Months Left based on Final Date
-                let monthsLeft = "Unknown";
-                if (item.final_payment_date) {
-                    const now = new Date();
-                    const end = new Date(item.final_payment_date);
-                    // Difference in months
-                    monthsLeft = (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
-                    if (monthsLeft < 0) monthsLeft = 0;
-                }
-
-                // If ticked, visually deduct from total for a satisfying "progress" feel
-                // (Real deduction happens on monthly reset)
-                const displayTotal = isPaid ? (item.total_cost - item.monthly_cost) : item.total_cost;
-
                 tr.innerHTML = `
-                    <td style="cursor:grab">☰</td> <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
+                    <td style="cursor:grab; color:#ccc">☰</td>
+                    <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
                     <td>${item.name}</td>
-                    <td class="money-col">£${item.monthly_cost}</td>
-                    <td class="money-col">£${displayTotal.toFixed(2)}</td>
-                    <td style="font-size:0.8rem; color:#666;">${monthsLeft} mths</td>
+                    <td class="money-col">£${displayMonthly.toFixed(2)}</td>
+                    <td class="money-col">£${item.total_cost.toFixed(2)}</td>
+                    <td style="font-size:0.8rem; color:#666;">${monthsDisplay}</td>
                     <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
                 `;
             } else {
                 tr.innerHTML = `
-                    <td style="cursor:grab">☰</td>
+                    <td style="cursor:grab; color:#ccc">☰</td>
                     <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
                     <td>${item.name}</td>
-                    <td class="money-col">£${item.monthly_cost}</td>
+                    <td class="money-col">£${item.monthly_cost.toFixed(2)}</td>
                     <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
                 `;
             }
             list.appendChild(tr);
         });
 
-        totalSpan.innerText = total.toFixed(2);
+        totalSpan.innerText = categoryTotal.toFixed(2);
     });
 }
 
