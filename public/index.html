@@ -194,12 +194,46 @@
     </div>
 </div>
 
-        <section id="vision" class="page-section">
-            <h1>Vision Board</h1>
-            <div class="card">
-                <p>Drag and drop images go here.</p>
-            </div>
-        </section>
+<section id="vision" class="page-section">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>Vision Board</h1>
+        <button onclick="openVisionModal()" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ Add Image</button>
+    </div>
+
+    <div class="vision-filter">
+        <button class="filter-btn active" onclick="filterVision('All')">All</button>
+        <button class="filter-btn" onclick="filterVision('Lifestyle')">Lifestyle</button>
+        <button class="filter-btn" onclick="filterVision('Housing')">Housing</button>
+        <button class="filter-btn" onclick="filterVision('Money')">Money</button>
+        <button class="filter-btn" onclick="filterVision('Travel')">Travel</button>
+    </div>
+
+    <div id="vision-grid" class="vision-grid">
+        </div>
+</section>
+
+<div id="vision-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
+        <h2>Add to Vision Board</h2>
+        
+        <label style="display:block; margin-top:10px;">Title / Affirmation</label>
+        <input type="text" id="vision-title" placeholder="e.g. My Dream Home" style="width:100%; padding:0.5rem;">
+
+        <label style="display:block; margin-top:10px;">Image URL</label>
+        <input type="text" id="vision-url" placeholder="https://..." style="width:100%; padding:0.5rem;">
+
+        <label style="display:block; margin-top:10px;">Section</label>
+        <select id="vision-section" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+            <option value="Lifestyle">Lifestyle</option>
+            <option value="Housing">Housing</option>
+            <option value="Money">Money</option>
+            <option value="Travel">Travel</option>
+        </select>
+
+        <button onclick="saveVisionItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
+        <button onclick="document.getElementById('vision-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
+    </div>
+</div>
 
     </main>
 
