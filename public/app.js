@@ -90,37 +90,53 @@ async function fetchTasks() {
 
 function renderTasks() {
     // 1. Reset Lists
-    document.getElementById('personal-task-list').innerHTML = '';
+    const personalList = document.getElementById('personal-task-list');
+    personalList.innerHTML = '';
+    
     const columns = {
         'Todo': document.querySelector('#col-todo .task-container'),
         'In-Progress': document.querySelector('#col-inprogress .task-container'),
         'On-Hold': document.querySelector('#col-onhold .task-container'),
         'Done': document.querySelector('#col-done .task-container')
     };
-    
-    // Clear Kanban Columns
     Object.values(columns).forEach(col => col.innerHTML = '');
 
-    // Reset Counters
     const counts = { 'Todo': 0, 'In-Progress': 0, 'On-Hold': 0, 'Done': 0 };
 
     allTasks.forEach(task => {
         // --- PERSONAL LIST ---
         if (task.type === 'Personal') {
-            const html = `
-                <div class="personal-task">
+            const div = document.createElement('div');
+            
+            // Is it a Header or a Task?
+            if (task.is_header) {
+                div.className = 'personal-header';
+                div.innerHTML = `
+                    <span>${task.title}</span>
+                    <button onclick="deleteTaskDirect(${task.id})" style="color:#999; border:none; background:none; cursor:pointer;">x</button>
+                `;
+            } else {
+                div.className = 'personal-task';
+                div.innerHTML = `
+                    <span style="color:#ccc; cursor:grab; margin-right:10px;">☰</span>
                     <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">
-                    <span style="${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}">${task.title}</span>
-                </div>`;
-            document.getElementById('personal-task-list').insertAdjacentHTML('beforeend', html);
+                    <span style="flex:1; margin-left:10px; cursor:pointer; ${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}" onclick="openTaskModalId(${task.id})">${task.title}</span>
+                `;
+            }
+            
+            // Enable Dragging for Personal Items
+            div.draggable = true;
+            div.dataset.id = task.id;
+            addPersonalDragEvents(div);
+            
+            personalList.appendChild(div);
         } 
         // --- WORK KANBAN ---
         else {
             const statusKey = task.status || 'Todo';
             if (columns[statusKey]) {
-                counts[statusKey]++; // Increment Counter
+                counts[statusKey]++; 
                 
-                // Color Logic
                 let colorClass = `status-${statusKey.toLowerCase().replace('-','')}`;
                 let dateBadge = '';
                 
@@ -134,35 +150,267 @@ function renderTasks() {
                     else if (diffDays <= 3) { colorClass = 'urgent-soon'; dateBadge = 'Due Soon'; }
                 }
 
-                // Create Card
                 const card = document.createElement('div');
                 card.className = `task-card ${colorClass}`;
                 card.draggable = true;
                 card.dataset.id = task.id;
                 card.dataset.status = statusKey;
                 
-                // Add content
-                let innerHTML = `
+                card.innerHTML = `
                     <div style="font-weight:600;">${task.title}</div>
                     ${dateBadge ? `<span class="task-date-badge">${dateBadge}</span>` : ''}
                     ${task.due_date ? `<div class="task-meta">Due: ${task.due_date}</div>` : ''}
                 `;
-                card.innerHTML = innerHTML;
 
-                // Events
-                card.onclick = () => openTaskModal(task); // Edit Modal
-                addTaskDragEvents(card); // Drag Logic
+                card.onclick = () => openTaskModal(task); 
+                addTaskDragEvents(card); 
 
                 columns[statusKey].appendChild(card);
             }
         }
     });
 
-    // Update Header Counts
     document.getElementById('count-todo').innerText = counts['Todo'];
     document.getElementById('count-inprogress').innerText = counts['In-Progress'];
     document.getElementById('count-onhold').innerText = counts['On-Hold'];
     document.getElementById('count-done').innerText = counts['Done'];
+}
+
+// --- PERSONAL DRAG & DROP ---
+let personalDraggedId = null;
+
+function addPersonalDragEvents(row) {
+    row.addEventListener('dragstart', function(e) {
+        personalDraggedId = this.dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+        this.classList.add('dragging');
+    });
+    
+    row.addEventListener('dragover', function(e) { e.preventDefault(); });
+
+    row.addEventListener('drop', async function(e) {
+        e.preventDefault();
+        this.classList.remove('dragging');
+        
+        const targetId = this.dataset.id;
+        
+        // Ensure we are swapping Personal items only
+        if (personalDraggedId && targetId && personalDraggedId !== targetId) {
+            // Optimistic Swap
+            const itemA = allTasks.find(t => t.id == personalDraggedId);
+            const itemB = allTasks.find(t => t.id == targetId);
+            
+            // If dragging between Personal and Work, stop.
+            if (!itemA || !itemB || itemA.type !== 'Personal' || itemB.type !== 'Personal') return;
+
+            const temp = itemA.position_order;
+            itemA.position_order = itemB.position_order;
+            itemB.position_order = temp;
+            
+            allTasks.sort((a,b) => a.position_order - b.position_order);
+            renderTasks();
+
+            await fetch('/api/tasks/update_order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: personalDraggedId, swap_with_id: targetId })
+            });
+        }
+    });
+    
+    row.addEventListener('dragend', function() { this.classList.remove('dragging'); });
+}
+
+// --- WORK KANBAN DRAG & DROP ---
+let taskDraggedId = null;
+function addTaskDragEvents(card) {
+    card.addEventListener('dragstart', function(e) {
+        taskDraggedId = this.dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+        this.classList.add('dragging');
+    });
+    card.addEventListener('dragend', function() {
+        this.classList.remove('dragging');
+        document.querySelectorAll('.task-container').forEach(c => c.style.background = '');
+    });
+}
+
+document.querySelectorAll('.task-container').forEach(container => {
+    container.addEventListener('dragover', e => { e.preventDefault(); container.style.background = '#f4f5f7'; });
+    container.addEventListener('dragleave', e => { container.style.background = ''; });
+    container.addEventListener('drop', async function(e) {
+        e.preventDefault(); container.style.background = '';
+        const newStatus = this.dataset.status; 
+        const targetCard = e.target.closest('.task-card');
+        
+        if (targetCard && taskDraggedId && targetCard.dataset.id !== taskDraggedId) {
+            const targetId = targetCard.dataset.id;
+            const itemA = allTasks.find(t => t.id == taskDraggedId);
+            const itemB = allTasks.find(t => t.id == targetId);
+            
+            const temp = itemA.position_order;
+            itemA.position_order = itemB.position_order;
+            itemB.position_order = temp;
+            itemA.status = newStatus; 
+            
+            allTasks.sort((a,b) => a.position_order - b.position_order);
+            renderTasks();
+
+            await fetch('/api/tasks/update_order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: taskDraggedId, swap_with_id: targetId })
+            });
+        } else if (taskDraggedId) {
+            const item = allTasks.find(t => t.id == taskDraggedId);
+            if (item.status !== newStatus) {
+                item.status = newStatus;
+                item.position_order = Date.now(); 
+                renderTasks();
+                await fetch('/api/tasks/update_order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: taskDraggedId, new_status: newStatus })
+                });
+            }
+        }
+    });
+});
+
+// --- TASK MODAL LOGIC ---
+function openAddTaskModal() { openTaskModal(null); }
+function openTaskModalId(id) {
+    const task = allTasks.find(t => t.id === id);
+    if(task) openTaskModal(task);
+}
+
+function openTaskModal(task) {
+    if (task) {
+        document.getElementById('task-modal-title').innerText = "Edit Task";
+        document.getElementById('task-id').value = task.id;
+        document.getElementById('task-title').value = task.title;
+        document.getElementById('task-type').value = task.type || 'Work';
+        document.getElementById('task-status-select').value = task.status || 'Todo';
+        document.getElementById('task-desc').value = task.description || '';
+        document.getElementById('task-start').value = task.start_date || '';
+        document.getElementById('task-due').value = task.due_date || '';
+        document.getElementById('task-review').value = task.review_date || '';
+        
+        // Show delete button
+        document.querySelector('.delete-btn').style.display = 'block';
+    } else {
+        document.getElementById('task-modal-title').innerText = "New Task";
+        document.getElementById('task-id').value = '';
+        document.getElementById('task-title').value = '';
+        document.getElementById('task-type').value = 'Work';
+        document.getElementById('task-status-select').value = 'Todo';
+        document.getElementById('task-desc').value = '';
+        document.getElementById('task-start').value = '';
+        document.getElementById('task-due').value = '';
+        document.getElementById('task-review').value = '';
+        
+        // Hide delete button for new tasks
+        document.querySelector('.delete-btn').style.display = 'none';
+    }
+    document.getElementById('task-modal').style.display = 'block';
+}
+
+async function saveTask() {
+    const id = document.getElementById('task-id').value;
+    const title = document.getElementById('task-title').value;
+    const type = document.getElementById('task-type').value;
+    const status = document.getElementById('task-status-select').value;
+    const desc = document.getElementById('task-desc').value;
+    const start = document.getElementById('task-start').value;
+    const due = document.getElementById('task-due').value;
+    const review = document.getElementById('task-review').value;
+
+    if (!title) return alert("Task title required");
+
+    await fetch('/api/tasks/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            id: id || null, 
+            title, type, status, 
+            description: desc, 
+            start_date: start, 
+            due_date: due, 
+            review_date: review 
+        })
+    });
+
+    document.getElementById('task-modal').style.display = 'none';
+    fetchTasks();
+}
+
+async function deleteTask() {
+    const id = document.getElementById('task-id').value;
+    if(!id) return;
+    if(!confirm("Delete this task?")) return;
+
+    await fetch('/api/tasks/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+    
+    document.getElementById('task-modal').style.display = 'none';
+    fetchTasks();
+}
+
+// Helper for Personal Headers
+async function addPersonalSection() {
+    const name = prompt("Enter section name (e.g. 'Morning', 'Errands'):");
+    if(!name) return;
+    
+    await fetch('/api/tasks/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            title: name, 
+            type: 'Personal',
+            is_header: 1 // Marks it as a section
+        })
+    });
+    fetchTasks();
+}
+
+async function deleteTaskDirect(id) {
+    if(!confirm("Delete this section header?")) return;
+    await fetch('/api/tasks/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+    fetchTasks();
+}
+
+async function updateTaskStatusSimple(id, newStatus) {
+    const task = allTasks.find(t => t.id == id);
+    if(task) task.status = newStatus;
+    renderTasks();
+    await fetch('/api/tasks/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus })
+    });
+}
+
+// --- TAB SWITCHING LOGIC ---
+function switchDailyTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.daily-view').forEach(v => v.style.display = 'none');
+    
+    if(tab === 'personal') {
+        const btn = document.getElementById('tab-personal');
+        if(btn) btn.classList.add('active');
+        document.getElementById('view-personal').style.display = 'block';
+    } else {
+        const btn = document.getElementById('tab-work');
+        if(btn) btn.classList.add('active');
+        document.getElementById('view-work').style.display = 'grid'; 
+    }
 }
 
 // --- TASK DRAG & DROP ---
