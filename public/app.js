@@ -462,16 +462,20 @@ function addBudgetDragEvents(row) {
         e.dataTransfer.dropEffect = 'move';
     });
 
-    row.addEventListener('drop', async function(e) {
+   row.addEventListener('drop', async function(e) {
         e.preventDefault();
         e.stopPropagation();
         this.style.opacity = '1';
         
         const targetId = this.dataset.id;
-        // Only allow swapping within same category/table
-        if (budgetDraggedId && targetId && budgetDraggedId !== targetId && this.dataset.cat === document.querySelector(`tr[data-id="${budgetDraggedId}"]`).dataset.cat) {
+        
+        // Check if we are dropping on a valid row in the same category
+        // We use a safe check here to ensure we don't crash if the dragged element isn't found
+        const draggedRow = document.querySelector(`tr[data-id="${budgetDraggedId}"]`);
+        
+        if (budgetDraggedId && targetId && budgetDraggedId !== targetId && draggedRow && this.dataset.cat === draggedRow.dataset.cat) {
             
-            // Optimistic Swap
+            // 1. Optimistic Swap (Update the internal numbers)
             const itemA = allBudgetItems.find(i => i.id == budgetDraggedId);
             const itemB = allBudgetItems.find(i => i.id == targetId);
             
@@ -479,9 +483,12 @@ function addBudgetDragEvents(row) {
             itemA.position_order = itemB.position_order;
             itemB.position_order = temp;
             
+            // 2. CRITICAL FIX: Re-sort the array so the visual order updates
+            allBudgetItems.sort((a,b) => (a.position_order - b.position_order));
+            
             renderBudget();
 
-            // API Call
+            // 3. API Call to save the change
             await fetch('/api/budget_items/update_order', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
