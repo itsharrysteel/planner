@@ -1,25 +1,21 @@
 export async function onRequest(context) {
-  // context.env.DB is our link to the D1 database
   const db = context.env.DB;
   const url = new URL(context.request.url);
-
-  // We split the URL to see what you are asking for (e.g., /api/tasks or /api/goals)
-  // The path looks like: /api/tasks -> ["", "api", "tasks"]
   const path = url.pathname.split('/').filter(p => p);
-  const resource = path[1]; // 'tasks', 'goals', etc.
+  const resource = path[1]; 
 
   // 1. GET requests (Reading data)
   if (context.request.method === 'GET') {
     if (!resource) return new Response('API Root', { status: 200 });
 
-    // Allow fetching tasks, goals, etc.
+    // Allow fetching tasks, goals, budget items, etc.
     if (['tasks', 'projects', 'goals', 'budget_items', 'vision_board'].includes(resource)) {
       const { results } = await db.prepare(`SELECT * FROM ${resource}`).all();
       return Response.json(results);
     }
   }
 
-// 2. POST requests (Creating/Updating data)
+  // 2. POST requests (Creating/Updating data)
   if (context.request.method === 'POST') {
     const data = await context.request.json();
     
@@ -33,7 +29,7 @@ export async function onRequest(context) {
       return Response.json(info);
     }
 
-    // --- GOALS (Monthly, Yearly, Habits) ---
+    // --- GOALS ---
     if (resource === 'goals' && path[2] === 'add') {
       const info = await db.prepare(
         'INSERT INTO goals (title, type, target_amount, current_amount, image_url, notes) VALUES (?, ?, ?, ?, ?, ?)'
@@ -42,23 +38,18 @@ export async function onRequest(context) {
     }
     
     if (resource === 'goals' && path[2] === 'update') {
-      // Dynamic Update: allows updating just 'current_amount' OR 'notes' OR everything
-      // Simplest way for now is to check what we got.
       if (data.notes !== undefined) {
-         // Full update (Title, notes, etc)
          const info = await db.prepare(
            'UPDATE goals SET title=?, image_url=?, current_amount=?, target_amount=?, notes=? WHERE id=?'
          ).bind(data.title, data.image_url, data.current_amount, data.target_amount, data.notes, data.id).run();
          return Response.json(info);
       } else {
-         // Quick update (Just progress)
          const info = await db.prepare('UPDATE goals SET current_amount = ? WHERE id = ?').bind(data.current_amount, data.id).run();
          return Response.json(info);
       }
     }
-  }
 
-  // --- BUDGET ITEMS ---
+    // --- BUDGET ITEMS (Moved INSIDE the POST block) ---
     if (resource === 'budget_items' && path[2] === 'add') {
         const info = await db.prepare(
             'INSERT INTO budget_items (category, name, monthly_cost, total_cost) VALUES (?, ?, ?, ?)'
@@ -67,7 +58,6 @@ export async function onRequest(context) {
     }
 
     if (resource === 'budget_items' && path[2] === 'toggle') {
-        // Toggle the "is_paid_this_month" status
         const info = await db.prepare(
             'UPDATE budget_items SET is_paid_this_month = ? WHERE id = ?'
         ).bind(data.is_paid ? 1 : 0, data.id).run();
@@ -78,6 +68,8 @@ export async function onRequest(context) {
          const info = await db.prepare('DELETE FROM budget_items WHERE id = ?').bind(data.id).run();
          return Response.json(info);
     }
+
+  } // <--- The POST block now ends HERE
 
   return new Response('Not Found', { status: 404 });
 }
