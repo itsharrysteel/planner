@@ -423,3 +423,96 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchGoals();
     fetchBudget(); // Load budget
 });
+
+/* --- VISION BOARD LOGIC --- */
+
+let allVisionItems = [];
+let currentVisionFilter = 'All';
+
+async function fetchVision() {
+    try {
+        const res = await fetch('/api/vision_board');
+        allVisionItems = await res.json();
+        renderVision();
+    } catch (err) { console.error(err); }
+}
+
+function renderVision() {
+    const grid = document.getElementById('vision-grid');
+    if (!grid) return;
+    grid.innerHTML = '';
+
+    const items = currentVisionFilter === 'All' 
+        ? allVisionItems 
+        : allVisionItems.filter(i => i.section === currentVisionFilter);
+
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'vision-card';
+        card.innerHTML = `
+            <img src="${item.image_url}" class="vision-img" onerror="this.src='https://via.placeholder.com/200?text=No+Image'">
+            <div class="vision-overlay">
+                <div class="vision-title">${item.title}</div>
+            </div>
+            <div class="vision-delete" onclick="deleteVisionItem(${item.id})">×</div>
+        `;
+        grid.appendChild(card);
+    });
+}
+
+function filterVision(category) {
+    currentVisionFilter = category;
+    
+    // Update Button Styles
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.innerText === category) btn.classList.add('active');
+    });
+
+    renderVision();
+}
+
+function openVisionModal() {
+    document.getElementById('vision-title').value = '';
+    document.getElementById('vision-url').value = '';
+    document.getElementById('vision-modal').style.display = 'block';
+}
+
+async function saveVisionItem() {
+    const title = document.getElementById('vision-title').value;
+    const url = document.getElementById('vision-url').value;
+    const section = document.getElementById('vision-section').value;
+
+    if (!title || !url) return alert("Please enter a title and image URL");
+
+    await fetch('/api/vision_board/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, image_url: url, section })
+    });
+
+    document.getElementById('vision-modal').style.display = 'none';
+    fetchVision();
+}
+
+async function deleteVisionItem(id) {
+    if(!confirm("Remove this vision?")) return;
+    
+    // Optimistic remove
+    allVisionItems = allVisionItems.filter(i => i.id !== id);
+    renderVision();
+
+    await fetch('/api/vision_board/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+}
+
+// Update Init
+document.addEventListener('DOMContentLoaded', () => {
+    fetchTasks();
+    fetchGoals();
+    fetchBudget();
+    fetchVision(); // Load Vision Board
+});
