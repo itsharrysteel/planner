@@ -121,19 +121,21 @@
     </div>
 </div>
 
-        <section id="yearly" class="page-section">
-            <h1>Yearly Goals</h1>
-            <div class="card">
-                <p>Big picture goals go here.</p>
-            </div>
-        </section>
+<section id="yearly" class="page-section">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>Yearly Goals (2026)</h1>
+        <button onclick="openGoalModal('Yearly')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Goal</button>
+    </div>
+    <div id="yearly-goals-container" class="goals-grid"></div>
+</section>
 
-        <section id="habits" class="page-section">
-            <h1>Habit Tracker</h1>
-            <div class="card">
-                <p>Habit streaks go here.</p>
-            </div>
-        </section>
+<section id="habits" class="page-section">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+        <h1>Habit Tracker</h1>
+        <button onclick="openGoalModal('Habit')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Habit</button>
+    </div>
+    <div id="habit-goals-container" class="goals-grid"></div>
+</section>
 
         <section id="budget" class="page-section">
             <h1>Budget Tracker</h1>
