@@ -274,3 +274,44 @@ tr:last-child td { border-bottom: none; }
     cursor: pointer; color: red; font-weight: bold; opacity: 0; transition: opacity 0.2s;
 }
 .vision-card:hover .vision-delete { opacity: 1; }
+
+/* --- DASHBOARD STYLES --- */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.stat-card {
+    background: white; padding: 1.5rem; border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex; flex-direction: column; justify-content: space-between;
+}
+
+.stat-number { font-size: 2.5rem; font-weight: bold; color: var(--primary); }
+.stat-label { color: #666; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+.dashboard-list { list-style: none; margin-top: 1rem; }
+.dashboard-list li {
+    padding: 0.8rem 0; border-bottom: 1px solid #eee;
+    font-size: 0.9rem; display: flex; justify-content: space-between;
+}
+.dashboard-list li:last-child { border-bottom: none; }
+
+/* The Scratchpad */
+.scratchpad-container {
+    background: #fff9c4; /* Yellow notepad look */
+    padding: 1.5rem; border-radius: 12px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    grid-row: span 2; /* Make it tall */
+    display: flex; flex-direction: column;
+}
+
+.scratchpad-area {
+    width: 100%; flex: 1;
+    background: transparent; border: none;
+    resize: none; outline: none;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 1rem; line-height: 1.5;
+    margin-top: 1rem;
+}
