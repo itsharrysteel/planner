@@ -292,3 +292,134 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchTasks();
     fetchGoals();
 });
+
+/* --- BUDGET LOGIC --- */
+
+let allBudgetItems = [];
+
+async function fetchBudget() {
+    try {
+        const res = await fetch('/api/budget_items');
+        allBudgetItems = await res.json();
+        renderBudget();
+    } catch (err) { console.error(err); }
+}
+
+function renderBudget() {
+    // Categories
+    const categories = ['Barclays', 'Monzo', 'Payback'];
+    
+    categories.forEach(cat => {
+        const list = document.getElementById(`list-${cat.toLowerCase()}`);
+        const totalSpan = document.getElementById(`total-${cat.toLowerCase()}`);
+        if(!list) return;
+
+        list.innerHTML = '';
+        const items = allBudgetItems.filter(i => i.category === cat);
+        let total = 0;
+
+        items.forEach(item => {
+            const isPaid = item.is_paid_this_month === 1;
+            
+            // Calculate Totals (Only sum unpaid items for the "Remaining to pay" view?)
+            // Actually, usually you want to see the total FIXED cost of bills.
+            if (cat === 'Payback') {
+                // For payback, we sum the TOTAL LEFT
+                // For now, let's just assume 'total_cost' is the remaining debt
+                total += (item.total_cost || 0); 
+            } else {
+                total += item.monthly_cost;
+            }
+
+            const tr = document.createElement('tr');
+            if(isPaid) tr.className = 'paid-row';
+
+            // Different columns for Payback vs Regular Bills
+            if (cat === 'Payback') {
+                tr.innerHTML = `
+                    <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
+                    <td>${item.name}</td>
+                    <td class="money-col">£${item.monthly_cost}</td>
+                    <td class="money-col">£${item.total_cost}</td>
+                    <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
+                `;
+            } else {
+                tr.innerHTML = `
+                    <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
+                    <td>${item.name}</td>
+                    <td class="money-col">£${item.monthly_cost}</td>
+                    <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
+                `;
+            }
+            list.appendChild(tr);
+        });
+
+        totalSpan.innerText = total.toFixed(2);
+    });
+}
+
+function openBudgetModal(category) {
+    document.getElementById('budget-category').value = category;
+    document.getElementById('budget-modal-title').innerText = `Add to ${category}`;
+    document.getElementById('budget-name').value = '';
+    document.getElementById('budget-monthly').value = '';
+    document.getElementById('budget-total').value = '';
+    
+    // Show total field only for paybacks
+    document.getElementById('payback-fields').style.display = category === 'Payback' ? 'block' : 'none';
+    
+    document.getElementById('budget-modal').style.display = 'block';
+}
+
+async function saveBudgetItem() {
+    const category = document.getElementById('budget-category').value;
+    const name = document.getElementById('budget-name').value;
+    const monthly = parseFloat(document.getElementById('budget-monthly').value) || 0;
+    const total = parseFloat(document.getElementById('budget-total').value) || 0;
+
+    if(!name) return;
+
+    await fetch('/api/budget_items/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            category, name, 
+            monthly_cost: monthly, 
+            total_cost: total // Only relevant for Payback
+        })
+    });
+
+    document.getElementById('budget-modal').style.display = 'none';
+    fetchBudget();
+}
+
+async function toggleBudgetPaid(id, isPaid) {
+    // Optimistic Update
+    const item = allBudgetItems.find(i => i.id === id);
+    if(item) item.is_paid_this_month = isPaid ? 1 : 0;
+    renderBudget();
+
+    await fetch('/api/budget_items/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_paid: isPaid })
+    });
+}
+
+async function deleteBudgetItem(id) {
+    if(!confirm("Delete this bill?")) return;
+    
+    await fetch('/api/budget_items/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+    });
+    fetchBudget();
+}
+
+// Add to Init
+document.addEventListener('DOMContentLoaded', () => {
+    fetchTasks();
+    fetchGoals();
+    fetchBudget(); // Load budget
+});
