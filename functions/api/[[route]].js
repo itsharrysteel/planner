@@ -53,27 +53,36 @@ export async function onRequest(context) {
 
     // --- BUDGET ITEMS ---
     if (resource === 'budget_items' && path[2] === 'add') {
-        // Now accepts final_payment_date
+        // This endpoint now handles ADD and UPDATE (Edit)
+        
+        // 1. If it has an ID, it's an EDIT
+        if (data.id) {
+             const info = await db.prepare(
+                'UPDATE budget_items SET name=?, monthly_cost=?, total_cost=?, final_payment_date=? WHERE id=?'
+             ).bind(data.name, data.monthly_cost, data.total_cost, data.final_payment_date, data.id).run();
+             return Response.json(info);
+        }
+
+        // 2. If no ID, it's a NEW ADD
+        // type defaults to 'bill' if not provided (e.g. for headers, type='header')
+        const type = data.type || 'bill';
+        
         const info = await db.prepare(
-            'INSERT INTO budget_items (category, name, monthly_cost, total_cost, final_payment_date) VALUES (?, ?, ?, ?, ?)'
-        ).bind(data.category, data.name, data.monthly_cost, data.total_cost, data.final_payment_date).run();
+            'INSERT INTO budget_items (category, name, monthly_cost, total_cost, final_payment_date, type) VALUES (?, ?, ?, ?, ?, ?)'
+        ).bind(data.category, data.name, data.monthly_cost, data.total_cost, data.final_payment_date, type).run();
         return Response.json(info);
     }
 
     if (resource === 'budget_items' && path[2] === 'toggle') {
-        const info = await db.prepare(
-            'UPDATE budget_items SET is_paid_this_month = ? WHERE id = ?'
-        ).bind(data.is_paid ? 1 : 0, data.id).run();
+        const info = await db.prepare('UPDATE budget_items SET is_paid_this_month = ? WHERE id = ?').bind(data.is_paid ? 1 : 0, data.id).run();
         return Response.json(info);
     }
 
     if (resource === 'budget_items' && path[2] === 'update_order') {
-        // Swap logic for Drag & Drop
         if (data.swap_with_id) {
             const itemA = await db.prepare('SELECT id, position_order FROM budget_items WHERE id = ?').bind(data.id).first();
             const itemB = await db.prepare('SELECT id, position_order FROM budget_items WHERE id = ?').bind(data.swap_with_id).first();
             
-            // Handle nulls if they exist
             const orderA = itemA.position_order || itemA.id;
             const orderB = itemB.position_order || itemB.id;
 
