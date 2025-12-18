@@ -8,8 +8,8 @@ export async function onRequest(context) {
   if (context.request.method === 'GET') {
     if (!resource) return new Response('API Root', { status: 200 });
 
-    // Allow fetching tasks, goals, budget items, etc.
-    if (['tasks', 'projects', 'goals', 'budget_items', 'vision_board'].includes(resource)) {
+    // Added 'categories' to the allowed list
+    if (['tasks', 'projects', 'goals', 'budget_items', 'vision_board', 'categories'].includes(resource)) {
       const { results } = await db.prepare(`SELECT * FROM ${resource}`).all();
       return Response.json(results);
     }
@@ -29,7 +29,7 @@ export async function onRequest(context) {
       return Response.json(info);
     }
 
-    // --- GOALS ---
+    // --- GOALS (Monthly, Yearly, Habits) ---
     if (resource === 'goals' && path[2] === 'add') {
       const info = await db.prepare(
         'INSERT INTO goals (title, type, target_amount, current_amount, image_url, notes) VALUES (?, ?, ?, ?, ?, ?)'
@@ -39,17 +39,19 @@ export async function onRequest(context) {
     
     if (resource === 'goals' && path[2] === 'update') {
       if (data.notes !== undefined) {
+         // Full update
          const info = await db.prepare(
            'UPDATE goals SET title=?, image_url=?, current_amount=?, target_amount=?, notes=? WHERE id=?'
          ).bind(data.title, data.image_url, data.current_amount, data.target_amount, data.notes, data.id).run();
          return Response.json(info);
       } else {
+         // Quick update
          const info = await db.prepare('UPDATE goals SET current_amount = ? WHERE id = ?').bind(data.current_amount, data.id).run();
          return Response.json(info);
       }
     }
 
-    // --- BUDGET ITEMS (Moved INSIDE the POST block) ---
+    // --- BUDGET ITEMS ---
     if (resource === 'budget_items' && path[2] === 'add') {
         const info = await db.prepare(
             'INSERT INTO budget_items (category, name, monthly_cost, total_cost) VALUES (?, ?, ?, ?)'
@@ -77,12 +79,43 @@ export async function onRequest(context) {
       return Response.json(info);
     }
 
+    if (resource === 'vision_board' && path[2] === 'update') {
+        // If updating order (swapping)
+        if (data.swap_with_id) {
+            const itemA = await db.prepare('SELECT id, position_order FROM vision_board WHERE id = ?').bind(data.id).first();
+            const itemB = await db.prepare('SELECT id, position_order FROM vision_board WHERE id = ?').bind(data.swap_with_id).first();
+            
+            await db.batch([
+                db.prepare('UPDATE vision_board SET position_order = ? WHERE id = ?').bind(itemB.position_order, itemA.id),
+                db.prepare('UPDATE vision_board SET position_order = ? WHERE id = ?').bind(itemA.position_order, itemB.id)
+            ]);
+            return Response.json({ success: true });
+        }
+        // If simple update (Title/Image)
+        const info = await db.prepare(
+            'UPDATE vision_board SET title = ?, image_url = ? WHERE id = ?'
+        ).bind(data.title, data.image_url, data.id).run();
+        return Response.json(info);
+    }
+
     if (resource === 'vision_board' && path[2] === 'delete') {
       const info = await db.prepare('DELETE FROM vision_board WHERE id = ?').bind(data.id).run();
       return Response.json(info);
     }
 
-  } // <--- The POST block now ends HERE
+    // --- CATEGORIES ---
+    if (resource === 'categories') {
+        if (path[2] === 'add') {
+             const info = await db.prepare('INSERT INTO categories (name) VALUES (?)').bind(data.name).run();
+             return Response.json(info);
+        }
+        if (path[2] === 'delete') {
+             const info = await db.prepare('DELETE FROM categories WHERE id = ?').bind(data.id).run();
+             return Response.json(info);
+        }
+    }
+
+  } 
 
   return new Response('Not Found', { status: 404 });
 }
