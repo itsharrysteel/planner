@@ -441,7 +441,14 @@ async function fetchVision() {
     try {
         const res = await fetch('/api/vision_board');
         allVisionItems = await res.json();
-        allVisionItems.sort((a, b) => (a.position_order || 0) - (b.position_order || 0));
+        
+        // AUTO-FIX: If any item has no order (null/0), default it to its ID
+        allVisionItems.forEach(item => {
+            if (!item.position_order) item.position_order = item.id;
+        });
+
+        // Sort by position_order
+        allVisionItems.sort((a, b) => (a.position_order) - (b.position_order));
         renderVision();
     } catch (err) { console.error(err); }
 }
