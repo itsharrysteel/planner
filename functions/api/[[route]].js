@@ -19,24 +19,42 @@ export async function onRequest(context) {
     }
   }
 
-  // 2. POST requests (Creating/Updating data)
+// 2. POST requests (Creating/Updating data)
   if (context.request.method === 'POST') {
     const data = await context.request.json();
     
-    // Example: Create a new Task
+    // --- TASKS ---
     if (resource === 'tasks' && path[2] === 'add') {
-      const info = await db.prepare(
-        'INSERT INTO tasks (title, type, status, due_date) VALUES (?, ?, ?, ?)'
-      ).bind(data.title, data.type, 'Todo', data.due_date).run();
+      const info = await db.prepare('INSERT INTO tasks (title, type, status, due_date) VALUES (?, ?, ?, ?)').bind(data.title, data.type, 'Todo', data.due_date).run();
+      return Response.json(info);
+    }
+    if (resource === 'tasks' && path[2] === 'update') {
+      const info = await db.prepare('UPDATE tasks SET status = ? WHERE id = ?').bind(data.status, data.id).run();
       return Response.json(info);
     }
 
-    // Example: Update a Task status
-    if (resource === 'tasks' && path[2] === 'update') {
+    // --- GOALS (Monthly, Yearly, Habits) ---
+    if (resource === 'goals' && path[2] === 'add') {
       const info = await db.prepare(
-        'UPDATE tasks SET status = ? WHERE id = ?'
-      ).bind(data.status, data.id).run();
+        'INSERT INTO goals (title, type, target_amount, current_amount, image_url, notes) VALUES (?, ?, ?, ?, ?, ?)'
+      ).bind(data.title, data.type, data.target_amount, data.current_amount, data.image_url, data.notes).run();
       return Response.json(info);
+    }
+    
+    if (resource === 'goals' && path[2] === 'update') {
+      // Dynamic Update: allows updating just 'current_amount' OR 'notes' OR everything
+      // Simplest way for now is to check what we got.
+      if (data.notes !== undefined) {
+         // Full update (Title, notes, etc)
+         const info = await db.prepare(
+           'UPDATE goals SET title=?, image_url=?, current_amount=?, target_amount=?, notes=? WHERE id=?'
+         ).bind(data.title, data.image_url, data.current_amount, data.target_amount, data.notes, data.id).run();
+         return Response.json(info);
+      } else {
+         // Quick update (Just progress)
+         const info = await db.prepare('UPDATE goals SET current_amount = ? WHERE id = ?').bind(data.current_amount, data.id).run();
+         return Response.json(info);
+      }
     }
   }
 
