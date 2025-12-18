@@ -137,12 +137,62 @@
     <div id="habit-goals-container" class="goals-grid"></div>
 </section>
 
-        <section id="budget" class="page-section">
-            <h1>Budget Tracker</h1>
-            <div class="card">
-                <p>Financial tables go here.</p>
-            </div>
-        </section>
+<section id="budget" class="page-section">
+    <h1>Budget Tracker</h1>
+    
+    <div class="budget-section">
+        <div class="budget-header">
+            <h3>🏦 Barclays Bills</h3>
+            <div class="budget-total">Total: £<span id="total-barclays">0.00</span></div>
+        </div>
+        <table class="budget-table">
+            <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
+            <tbody id="list-barclays"></tbody>
+        </table>
+        <button onclick="openBudgetModal('Barclays')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
+    </div>
+
+    <div class="budget-section">
+        <div class="budget-header">
+            <h3>💳 Monzo Bills</h3>
+            <div class="budget-total">Total: £<span id="total-monzo">0.00</span></div>
+        </div>
+        <table class="budget-table">
+            <thead><tr><th>Paid</th><th>Bill Name</th><th>Amount</th><th>Action</th></tr></thead>
+            <tbody id="list-monzo"></tbody>
+        </table>
+        <button onclick="openBudgetModal('Monzo')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Bill</button>
+    </div>
+
+    <div class="budget-section">
+        <div class="budget-header">
+            <h3>📉 Paybacks (Finance)</h3>
+            <div class="budget-total">Left: £<span id="total-payback">0.00</span></div>
+        </div>
+        <table class="budget-table">
+            <thead><tr><th>Paid</th><th>Item</th><th>Monthly</th><th>Total Left</th><th>Action</th></tr></thead>
+            <tbody id="list-payback"></tbody>
+        </table>
+        <button onclick="openBudgetModal('Payback')" style="margin-top:10px; color:var(--accent); background:none; border:none; cursor:pointer;">+ Add Payback</button>
+    </div>
+</section>
+
+<div id="budget-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+    <div style="background:white; width:400px; margin:100px auto; padding:2rem; border-radius:8px;">
+        <h2 id="budget-modal-title">Add Item</h2>
+        <input type="hidden" id="budget-category">
+        
+        <input type="text" id="budget-name" placeholder="Item Name (e.g. Council Tax)" style="width:100%; padding:0.5rem; margin:1rem 0;">
+        <input type="number" id="budget-monthly" placeholder="Monthly Cost (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+        
+        <div id="payback-fields" style="display:none;">
+            <input type="number" id="budget-total" placeholder="Total Debt Amount (£)" style="width:100%; padding:0.5rem; margin-bottom:1rem;">
+        </div>
+
+        <button onclick="saveBudgetItem()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer;">Save</button>
+        <button onclick="document.getElementById('budget-modal').style.display='none'" style="margin-left:1rem; cursor:pointer;">Cancel</button>
+    </div>
+</div>
 
         <section id="vision" class="page-section">
             <h1>Vision Board</h1>
