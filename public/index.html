@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2026 North Star</title>
+    <style>
+        body { font-family: sans-serif; padding: 2rem; max-width: 800px; margin: 0 auto; }
+        .status { padding: 1rem; border-radius: 8px; margin-bottom: 1rem; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        button { padding: 0.5rem 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>2026 North Star Planner</h1>
+    
+    <div id="status-box" class="status" style="display:none;">Loading...</div>
+
+    <h2>Database Test: Tasks</h2>
+    <ul id="task-list"></ul>
+
+    <button onclick="addTask()">+ Test Add Task</button>
+
+    <script>
+        // 1. Fetch Tasks on Load
+        async function loadTasks() {
+            const statusBox = document.getElementById('status-box');
+            try {
+                const response = await fetch('/api/tasks'); // Calls our backend function
+                if (!response.ok) throw new Error('Failed to connect to API');
+                
+                const tasks = await response.json();
+                
+                statusBox.style.display = 'block';
+                statusBox.className = 'status success';
+                statusBox.innerText = '✅ Connection Successful! Database is reachable.';
+
+                const list = document.getElementById('task-list');
+                list.innerHTML = tasks.length ? '' : '<li>No tasks found (Database is empty but working)</li>';
+                
+                tasks.forEach(task => {
+                    const li = document.createElement('li');
+                    li.textContent = `${task.title} (${task.status})`;
+                    list.appendChild(li);
+                });
+
+            } catch (err) {
+                statusBox.style.display = 'block';
+                statusBox.className = 'status error';
+                statusBox.innerText = '❌ Error: ' + err.message;
+                console.error(err);
+            }
+        }
+
+        // 2. Add a Test Task
+        async function addTask() {
+            try {
+                const res = await fetch('/api/tasks/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        title: 'Test Task ' + new Date().toLocaleTimeString(),
+                        due_date: '2026-01-01',
+                        type: 'Personal'
+                    })
+                });
+                if (res.ok) {
+                    loadTasks(); // Refresh list
+                }
+            } catch (err) {
+                alert('Failed to add task');
+            }
+        }
+
+        loadTasks();
+    </script>
+</body>
+</html>
