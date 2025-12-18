@@ -79,81 +79,246 @@ async function fetchTasks() {
     try {
         const res = await fetch('/api/tasks');
         allTasks = await res.json();
+        
+        // Ensure sorting
+        allTasks.forEach(t => { if(!t.position_order) t.position_order = t.id; });
+        allTasks.sort((a,b) => a.position_order - b.position_order);
+        
         renderTasks();
     } catch (err) { console.error("Error loading tasks:", err); }
 }
 
 function renderTasks() {
+    // 1. Reset Lists
     document.getElementById('personal-task-list').innerHTML = '';
-    document.querySelectorAll('.task-container').forEach(el => el.innerHTML = '');
+    const columns = {
+        'Todo': document.querySelector('#col-todo .task-container'),
+        'In-Progress': document.querySelector('#col-inprogress .task-container'),
+        'On-Hold': document.querySelector('#col-onhold .task-container'),
+        'Done': document.querySelector('#col-done .task-container')
+    };
+    
+    // Clear Kanban Columns
+    Object.values(columns).forEach(col => col.innerHTML = '');
+
+    // Reset Counters
+    const counts = { 'Todo': 0, 'In-Progress': 0, 'On-Hold': 0, 'Done': 0 };
 
     allTasks.forEach(task => {
+        // --- PERSONAL LIST ---
         if (task.type === 'Personal') {
             const html = `
                 <div class="personal-task">
-                    <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatus(${task.id}, this.checked ? 'Done' : 'Todo')">
+                    <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">
                     <span style="${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}">${task.title}</span>
                 </div>`;
             document.getElementById('personal-task-list').insertAdjacentHTML('beforeend', html);
-        } else {
-            const card = document.createElement('div');
-            card.className = 'task-card';
-            card.innerHTML = `<div>${task.title}</div><div class="task-meta">${task.due_date || 'No Date'}</div>`;
-            card.onclick = () => cycleStatus(task);
-            
-            let colId = '';
-            if(task.status === 'Todo') colId = 'col-todo';
-            else if(task.status === 'In-Progress') colId = 'col-inprogress';
-            else if(task.status === 'On-Hold') colId = 'col-onhold';
-            else if(task.status === 'Done') colId = 'col-done';
+        } 
+        // --- WORK KANBAN ---
+        else {
+            const statusKey = task.status || 'Todo';
+            if (columns[statusKey]) {
+                counts[statusKey]++; // Increment Counter
+                
+                // Color Logic
+                let colorClass = `status-${statusKey.toLowerCase().replace('-','')}`;
+                let dateBadge = '';
+                
+                if (task.due_date && statusKey !== 'Done') {
+                    const today = new Date().setHours(0,0,0,0);
+                    const due = new Date(task.due_date).setHours(0,0,0,0);
+                    const diffDays = (due - today) / (1000 * 60 * 60 * 24);
 
-            if(colId) document.querySelector(`#${colId} .task-container`).appendChild(card);
+                    if (diffDays < 0) { colorClass = 'urgent-overdue'; dateBadge = 'Overdue!'; }
+                    else if (diffDays === 0) { colorClass = 'urgent-today'; dateBadge = 'Due Today'; }
+                    else if (diffDays <= 3) { colorClass = 'urgent-soon'; dateBadge = 'Due Soon'; }
+                }
+
+                // Create Card
+                const card = document.createElement('div');
+                card.className = `task-card ${colorClass}`;
+                card.draggable = true;
+                card.dataset.id = task.id;
+                card.dataset.status = statusKey;
+                
+                // Add content
+                let innerHTML = `
+                    <div style="font-weight:600;">${task.title}</div>
+                    ${dateBadge ? `<span class="task-date-badge">${dateBadge}</span>` : ''}
+                    ${task.due_date ? `<div class="task-meta">Due: ${task.due_date}</div>` : ''}
+                `;
+                card.innerHTML = innerHTML;
+
+                // Events
+                card.onclick = () => openTaskModal(task); // Edit Modal
+                addTaskDragEvents(card); // Drag Logic
+
+                columns[statusKey].appendChild(card);
+            }
         }
+    });
+
+    // Update Header Counts
+    document.getElementById('count-todo').innerText = counts['Todo'];
+    document.getElementById('count-inprogress').innerText = counts['In-Progress'];
+    document.getElementById('count-onhold').innerText = counts['On-Hold'];
+    document.getElementById('count-done').innerText = counts['Done'];
+}
+
+// --- TASK DRAG & DROP ---
+let taskDraggedId = null;
+
+function addTaskDragEvents(card) {
+    card.addEventListener('dragstart', function(e) {
+        taskDraggedId = this.dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+        this.classList.add('dragging');
+    });
+
+    card.addEventListener('dragend', function() {
+        this.classList.remove('dragging');
+        // Clean up visual cues
+        document.querySelectorAll('.task-container').forEach(c => c.style.background = '');
     });
 }
 
-function openAddTaskModal() { document.getElementById('task-modal').style.display = 'block'; }
+// Add listeners to COLUMNS (Containers) to handle drops
+document.querySelectorAll('.task-container').forEach(container => {
+    container.addEventListener('dragover', e => {
+        e.preventDefault(); // Allow dropping
+        container.style.background = '#f4f5f7'; // Highlight drop zone
+    });
+    
+    container.addEventListener('dragleave', e => {
+        container.style.background = '';
+    });
 
-async function saveNewTask() {
-    const title = document.getElementById('new-task-title').value;
-    const type = document.getElementById('new-task-type').value;
-    if(!title) return;
+    container.addEventListener('drop', async function(e) {
+        e.preventDefault();
+        container.style.background = '';
+        
+        const newStatus = this.dataset.status; // 'Todo', 'In-Progress' etc
+        
+        // Find if we dropped ONTO another card (Swap/Reorder)
+        const targetCard = e.target.closest('.task-card');
+        
+        if (targetCard && taskDraggedId && targetCard.dataset.id !== taskDraggedId) {
+            // SWAP LOGIC
+            const targetId = targetCard.dataset.id;
+            
+            // Optimistic update
+            const itemA = allTasks.find(t => t.id == taskDraggedId);
+            const itemB = allTasks.find(t => t.id == targetId);
+            
+            // Swap orders
+            const temp = itemA.position_order;
+            itemA.position_order = itemB.position_order;
+            itemB.position_order = temp;
+            
+            // Update status of dragged item to match target's column
+            itemA.status = newStatus; 
+            
+            // Re-sort and Render
+            allTasks.sort((a,b) => a.position_order - b.position_order);
+            renderTasks();
+
+            // API Call
+            await fetch('/api/tasks/update_order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: taskDraggedId, swap_with_id: targetId })
+            });
+
+        } else if (taskDraggedId) {
+            // DROP INTO EMPTY SPACE (Change Status, move to bottom)
+            const item = allTasks.find(t => t.id == taskDraggedId);
+            if (item.status !== newStatus) {
+                item.status = newStatus;
+                item.position_order = Date.now(); // Move to end of list
+                
+                renderTasks();
+
+                await fetch('/api/tasks/update_order', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id: taskDraggedId, new_status: newStatus })
+                });
+            }
+        }
+    });
+});
+
+// --- TASK MODAL LOGIC ---
+function openAddTaskModal() {
+    openTaskModal(null); // Open empty
+}
+
+function openTaskModal(task) {
+    if (task) {
+        // Edit Mode
+        document.getElementById('task-modal-title').innerText = "Edit Task";
+        document.getElementById('task-id').value = task.id;
+        document.getElementById('task-title').value = task.title;
+        document.getElementById('task-type').value = task.type || 'Work';
+        document.getElementById('task-status-select').value = task.status || 'Todo';
+        document.getElementById('task-desc').value = task.description || '';
+        document.getElementById('task-start').value = task.start_date || '';
+        document.getElementById('task-due').value = task.due_date || '';
+        document.getElementById('task-review').value = task.review_date || '';
+    } else {
+        // New Mode
+        document.getElementById('task-modal-title').innerText = "New Task";
+        document.getElementById('task-id').value = '';
+        document.getElementById('task-title').value = '';
+        document.getElementById('task-type').value = 'Work';
+        document.getElementById('task-status-select').value = 'Todo';
+        document.getElementById('task-desc').value = '';
+        document.getElementById('task-start').value = '';
+        document.getElementById('task-due').value = '';
+        document.getElementById('task-review').value = '';
+    }
+    document.getElementById('task-modal').style.display = 'block';
+}
+
+async function saveTask() {
+    const id = document.getElementById('task-id').value;
+    const title = document.getElementById('task-title').value;
+    const type = document.getElementById('task-type').value;
+    const status = document.getElementById('task-status-select').value;
+    const desc = document.getElementById('task-desc').value;
+    const start = document.getElementById('task-start').value;
+    const due = document.getElementById('task-due').value;
+    const review = document.getElementById('task-review').value;
+
+    if (!title) return alert("Task title required");
+
     await fetch('/api/tasks/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, type, due_date: '' })
+        body: JSON.stringify({ 
+            id: id || null, 
+            title, type, status, 
+            description: desc, 
+            start_date: start, 
+            due_date: due, 
+            review_date: review 
+        })
     });
+
     document.getElementById('task-modal').style.display = 'none';
-    document.getElementById('new-task-title').value = '';
-    fetchTasks(); 
+    fetchTasks();
 }
 
-async function updateTaskStatus(id, newStatus) {
+// Simple checkbox update for Personal list
+async function updateTaskStatusSimple(id, newStatus) {
+    const task = allTasks.find(t => t.id == id);
+    if(task) task.status = newStatus;
+    renderTasks();
     await fetch('/api/tasks/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id, status: newStatus })
     });
-    fetchTasks();
-}
-
-async function cycleStatus(task) {
-    const stages = ['Todo', 'In-Progress', 'On-Hold', 'Done'];
-    let currentIdx = stages.indexOf(task.status);
-    let nextStatus = stages[(currentIdx + 1) % stages.length];
-    await updateTaskStatus(task.id, nextStatus);
-}
-
-function switchDailyTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.daily-view').forEach(v => v.style.display = 'none');
-    if(tab === 'personal') {
-        document.querySelector('button[onclick="switchDailyTab(\'personal\')"]').classList.add('active');
-        document.getElementById('view-personal').style.display = 'block';
-    } else {
-        document.querySelector('button[onclick="switchDailyTab(\'work\')"]').classList.add('active');
-        document.getElementById('view-work').style.display = 'grid'; 
-    }
 }
 
 /* --- GOALS LOGIC --- */
