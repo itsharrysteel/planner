@@ -324,3 +324,23 @@ column-count: 4;
     cursor: pointer; color: red; opacity: 0; transition: opacity 0.2s; z-index: 10;
 }
 .vision-card:hover .vision-delete { opacity: 1; }
+
+/* Add to bottom of styles.css */
+.budget-header-row {
+    background-color: #f8f9fa;
+    font-weight: bold;
+    color: var(--primary);
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 1px;
+}
+.budget-header-row td {
+    padding-top: 15px;
+    padding-bottom: 5px;
+    border-bottom: 2px solid #ddd;
+}
+.editable-cell:hover {
+    text-decoration: underline;
+    cursor: pointer;
+    color: var(--accent);
+}
