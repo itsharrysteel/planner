@@ -385,14 +385,20 @@ async function fetchCategories() {
 function renderCategories() {
     const container = document.querySelector('.vision-filter');
     container.innerHTML = `<button class="filter-btn ${currentVisionFilter === 'All' ? 'active' : ''}" onclick="filterVision('All')">All</button>`;
+    
     allCategories.forEach(cat => {
         const btn = document.createElement('button');
         btn.className = `filter-btn ${currentVisionFilter === cat.name ? 'active' : ''}`;
         btn.innerText = cat.name;
         btn.onclick = () => filterVision(cat.name);
+        
+        // ADDED: Tooltip helper
+        btn.title = "Double-click to delete this category"; 
+        
         btn.ondblclick = () => deleteCategory(cat.id, cat.name);
         container.appendChild(btn);
     });
+    
     const addBtn = document.createElement('button');
     addBtn.className = 'add-cat-btn';
     addBtn.innerText = '+ New';
