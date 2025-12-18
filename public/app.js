@@ -321,6 +321,25 @@ async function updateTaskStatusSimple(id, newStatus) {
     });
 }
 
+// --- TAB SWITCHING LOGIC ---
+function switchDailyTab(tab) {
+    // 1. Deactivate all tabs and hide all views
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.daily-view').forEach(v => v.style.display = 'none');
+    
+    if(tab === 'personal') {
+        // 2. Activate Personal
+        const btn = document.getElementById('tab-personal');
+        if(btn) btn.classList.add('active');
+        document.getElementById('view-personal').style.display = 'block';
+    } else {
+        // 3. Activate Work
+        const btn = document.getElementById('tab-work');
+        if(btn) btn.classList.add('active');
+        document.getElementById('view-work').style.display = 'grid'; 
+    }
+}
+
 /* --- GOALS LOGIC --- */
 let allGoals = [];
 
