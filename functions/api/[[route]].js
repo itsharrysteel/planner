@@ -8,7 +8,7 @@ export async function onRequest(context) {
   if (context.request.method === 'GET') {
     if (!resource) return new Response('API Root', { status: 200 });
 
-    // Added 'categories' to the allowed list
+    // Allow fetching tasks, projects, goals, budget_items, vision_board, categories
     if (['tasks', 'projects', 'goals', 'budget_items', 'vision_board', 'categories'].includes(resource)) {
       const { results } = await db.prepare(`SELECT * FROM ${resource}`).all();
       return Response.json(results);
@@ -21,61 +21,55 @@ export async function onRequest(context) {
     
     // --- TASKS ---
     if (resource === 'tasks' && path[2] === 'add') {
-      const info = await db.prepare('INSERT INTO tasks (title, type, status, due_date) VALUES (?, ?, ?, ?)').bind(data.title, data.type, 'Todo', data.due_date).run();
-      return Response.json(info);
+      const taskInfo = await db.prepare('INSERT INTO tasks (title, type, status, due_date) VALUES (?, ?, ?, ?)').bind(data.title, data.type, 'Todo', data.due_date).run();
+      return Response.json(taskInfo);
     }
     if (resource === 'tasks' && path[2] === 'update') {
-      const info = await db.prepare('UPDATE tasks SET status = ? WHERE id = ?').bind(data.status, data.id).run();
-      return Response.json(info);
+      const taskInfo = await db.prepare('UPDATE tasks SET status = ? WHERE id = ?').bind(data.status, data.id).run();
+      return Response.json(taskInfo);
     }
 
-    // --- GOALS (Monthly, Yearly, Habits) ---
+    // --- GOALS ---
     if (resource === 'goals' && path[2] === 'add') {
-      const info = await db.prepare(
+      const goalInfo = await db.prepare(
         'INSERT INTO goals (title, type, target_amount, current_amount, image_url, notes) VALUES (?, ?, ?, ?, ?, ?)'
       ).bind(data.title, data.type, data.target_amount, data.current_amount, data.image_url, data.notes).run();
-      return Response.json(info);
+      return Response.json(goalInfo);
     }
     
     if (resource === 'goals' && path[2] === 'update') {
       if (data.notes !== undefined) {
-         // Full update
-         const info = await db.prepare(
+         const goalInfo = await db.prepare(
            'UPDATE goals SET title=?, image_url=?, current_amount=?, target_amount=?, notes=? WHERE id=?'
          ).bind(data.title, data.image_url, data.current_amount, data.target_amount, data.notes, data.id).run();
-         return Response.json(info);
+         return Response.json(goalInfo);
       } else {
-         // Quick update
-         const info = await db.prepare('UPDATE goals SET current_amount = ? WHERE id = ?').bind(data.current_amount, data.id).run();
-         return Response.json(info);
+         const goalInfo = await db.prepare('UPDATE goals SET current_amount = ? WHERE id = ?').bind(data.current_amount, data.id).run();
+         return Response.json(goalInfo);
       }
     }
 
     // --- BUDGET ITEMS ---
     if (resource === 'budget_items' && path[2] === 'add') {
-        // This endpoint now handles ADD and UPDATE (Edit)
-        
-        // 1. If it has an ID, it's an EDIT
+        // 1. If ID exists, UPDATE
         if (data.id) {
-             const info = await db.prepare(
+             const updateInfo = await db.prepare(
                 'UPDATE budget_items SET name=?, monthly_cost=?, total_cost=?, final_payment_date=? WHERE id=?'
              ).bind(data.name, data.monthly_cost, data.total_cost, data.final_payment_date, data.id).run();
-             return Response.json(info);
+             return Response.json(updateInfo);
         }
 
-        // 2. If no ID, it's a NEW ADD
-        // type defaults to 'bill' if not provided (e.g. for headers, type='header')
+        // 2. If no ID, INSERT
         const type = data.type || 'bill';
-        
-        const info = await db.prepare(
+        const insertInfo = await db.prepare(
             'INSERT INTO budget_items (category, name, monthly_cost, total_cost, final_payment_date, type) VALUES (?, ?, ?, ?, ?, ?)'
         ).bind(data.category, data.name, data.monthly_cost, data.total_cost, data.final_payment_date, type).run();
-        return Response.json(info);
+        return Response.json(insertInfo);
     }
 
     if (resource === 'budget_items' && path[2] === 'toggle') {
-        const info = await db.prepare('UPDATE budget_items SET is_paid_this_month = ? WHERE id = ?').bind(data.is_paid ? 1 : 0, data.id).run();
-        return Response.json(info);
+        const toggleInfo = await db.prepare('UPDATE budget_items SET is_paid_this_month = ? WHERE id = ?').bind(data.is_paid ? 1 : 0, data.id).run();
+        return Response.json(toggleInfo);
     }
 
     if (resource === 'budget_items' && path[2] === 'update_order') {
@@ -95,38 +89,30 @@ export async function onRequest(context) {
     }
 
     if (resource === 'budget_items' && path[2] === 'delete') {
-         const info = await db.prepare('DELETE FROM budget_items WHERE id = ?').bind(data.id).run();
-         return Response.json(info);
+         const deleteInfo = await db.prepare('DELETE FROM budget_items WHERE id = ?').bind(data.id).run();
+         return Response.json(deleteInfo);
     }
 
-    // --- RESET LOGIC (The "Payday" Trigger) ---
-    // We will call this endpoint /api/budget_items/reset whenever the app loads
-    // and detects we are in a new month compared to the last check.
     if (resource === 'budget_items' && path[2] === 'reset') {
-        // 1. Reduce Total Cost for Paybacks that were paid
-        // We assume if it was ticked (is_paid_this_month = 1), we deduct the monthly cost from total.
         await db.prepare(`
             UPDATE budget_items 
             SET total_cost = total_cost - monthly_cost 
             WHERE category = 'Payback' AND is_paid_this_month = 1 AND total_cost > 0
         `).run();
 
-        // 2. Uncheck EVERYTHING for the new month
-        const info = await db.prepare('UPDATE budget_items SET is_paid_this_month = 0').run();
-        
-        return Response.json({ success: true, info });
+        const resetInfo = await db.prepare('UPDATE budget_items SET is_paid_this_month = 0').run();
+        return Response.json({ success: true, resetInfo });
     }
 
     // --- VISION BOARD ---
     if (resource === 'vision_board' && path[2] === 'add') {
-      const info = await db.prepare(
+      const visionInfo = await db.prepare(
         'INSERT INTO vision_board (section, title, image_url) VALUES (?, ?, ?)'
       ).bind(data.section, data.title, data.image_url).run();
-      return Response.json(info);
+      return Response.json(visionInfo);
     }
 
     if (resource === 'vision_board' && path[2] === 'update') {
-        // If updating order (swapping)
         if (data.swap_with_id) {
             const itemA = await db.prepare('SELECT id, position_order FROM vision_board WHERE id = ?').bind(data.id).first();
             const itemB = await db.prepare('SELECT id, position_order FROM vision_board WHERE id = ?').bind(data.swap_with_id).first();
@@ -137,27 +123,27 @@ export async function onRequest(context) {
             ]);
             return Response.json({ success: true });
         }
-        // If simple update (Title/Image)
-        const info = await db.prepare(
+        
+        const visionInfo = await db.prepare(
             'UPDATE vision_board SET title = ?, image_url = ? WHERE id = ?'
         ).bind(data.title, data.image_url, data.id).run();
-        return Response.json(info);
+        return Response.json(visionInfo);
     }
 
     if (resource === 'vision_board' && path[2] === 'delete') {
-      const info = await db.prepare('DELETE FROM vision_board WHERE id = ?').bind(data.id).run();
-      return Response.json(info);
+      const visionInfo = await db.prepare('DELETE FROM vision_board WHERE id = ?').bind(data.id).run();
+      return Response.json(visionInfo);
     }
 
     // --- CATEGORIES ---
     if (resource === 'categories') {
         if (path[2] === 'add') {
-             const info = await db.prepare('INSERT INTO categories (name) VALUES (?)').bind(data.name).run();
-             return Response.json(info);
+             const catInfo = await db.prepare('INSERT INTO categories (name) VALUES (?)').bind(data.name).run();
+             return Response.json(catInfo);
         }
         if (path[2] === 'delete') {
-             const info = await db.prepare('DELETE FROM categories WHERE id = ?').bind(data.id).run();
-             return Response.json(info);
+             const catInfo = await db.prepare('DELETE FROM categories WHERE id = ?').bind(data.id).run();
+             return Response.json(catInfo);
         }
     }
 
