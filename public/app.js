@@ -275,9 +275,15 @@ async function quickUpdateGoal(id, change) {
     
     const newAmount = Math.max(0, goal.current_amount + change); // Prevent negative
     
-    // Optimistic UI update (update screen before DB replies to make it feel fast)
+    // Optimistic UI update
     goal.current_amount = newAmount;
-    renderGoals(goal.type, 'monthly-goals-container'); 
+
+    // DYNAMICALLY find the right container
+    let containerId = 'monthly-goals-container'; // Default
+    if (goal.type === 'Yearly') containerId = 'yearly-goals-container';
+    if (goal.type === 'Habit') containerId = 'habit-goals-container';
+
+    renderGoals(goal.type, containerId); 
 
     // Send to DB
     await fetch('/api/goals/update', {
