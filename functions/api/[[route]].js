@@ -30,42 +30,49 @@ export async function onRequest(context) {
       }
 
       // 2. New Task (Insert)
+      const isHeader = data.is_header ? 1 : 0;
       const info = await db.prepare(
-          'INSERT INTO tasks (title, type, status, due_date, start_date, review_date, description) VALUES (?, ?, ?, ?, ?, ?, ?)'
-      ).bind(data.title, data.type, 'Todo', data.due_date, data.start_date, data.review_date, data.description).run();
+          'INSERT INTO tasks (title, type, status, due_date, start_date, review_date, description, is_header) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
+      ).bind(data.title, data.type, 'Todo', data.due_date, data.start_date, data.review_date, data.description, isHeader).run();
       return Response.json(info);
     }
 
     if (resource === 'tasks' && path[2] === 'update') {
-      // Simple status update (legacy check)
       const info = await db.prepare('UPDATE tasks SET status = ? WHERE id = ?').bind(data.status, data.id).run();
       return Response.json(info);
     }
 
     if (resource === 'tasks' && path[2] === 'update_order') {
-        // Drag and Drop Logic
         if (data.swap_with_id) {
-            // Case A: Swapping two items (Reordering)
+            // Reorder Logic
             const itemA = await db.prepare('SELECT id, position_order, status FROM tasks WHERE id = ?').bind(data.id).first();
             const itemB = await db.prepare('SELECT id, position_order, status FROM tasks WHERE id = ?').bind(data.swap_with_id).first();
             
-            // If dragging between columns, update the status of Item A to match Item B
+            // If dragging, inherit status (so you can drag into a different Kanban column)
             let newStatus = itemA.status;
             if (itemA.status !== itemB.status) newStatus = itemB.status;
 
+            // Handle Nulls
+            const orderA = itemA.position_order || itemA.id;
+            const orderB = itemB.position_order || itemB.id;
+
             await db.batch([
-                db.prepare('UPDATE tasks SET position_order = ?, status = ? WHERE id = ?').bind(itemB.position_order, newStatus, itemA.id),
-                db.prepare('UPDATE tasks SET position_order = ? WHERE id = ?').bind(itemA.position_order, itemB.id)
+                db.prepare('UPDATE tasks SET position_order = ?, status = ? WHERE id = ?').bind(orderB, newStatus, itemA.id),
+                db.prepare('UPDATE tasks SET position_order = ? WHERE id = ?').bind(orderA, itemB.id)
             ]);
             return Response.json({ success: true });
         } 
         else if (data.new_status) {
-            // Case B: Dropped into an empty column (Status change only)
-            // We give it a huge order number so it goes to the bottom
             const info = await db.prepare('UPDATE tasks SET status = ?, position_order = ? WHERE id = ?')
                 .bind(data.new_status, Date.now(), data.id).run();
             return Response.json(info);
         }
+    }
+
+    // ADDED: Delete capability
+    if (resource === 'tasks' && path[2] === 'delete') {
+        const info = await db.prepare('DELETE FROM tasks WHERE id = ?').bind(data.id).run();
+        return Response.json(info);
     }
 
     // --- GOALS ---
