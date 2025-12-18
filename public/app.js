@@ -516,3 +516,75 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchBudget();
     fetchVision(); // Load Vision Board
 });
+
+/* --- DASHBOARD LOGIC --- */
+
+function loadDashboard() {
+    // 1. Date & Greeting
+    const date = new Date();
+    const hrs = date.getHours();
+    let greet = "Good Morning";
+    if (hrs >= 12) greet = "Good Afternoon";
+    if (hrs >= 17) greet = "Good Evening";
+    
+    document.getElementById('dash-greeting').innerText = greet + ", User";
+    document.getElementById('dash-date').innerText = date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+    // 2. Task Stats
+    const personalTodos = allTasks.filter(t => t.type === 'Personal' && t.status !== 'Done');
+    const workTodos = allTasks.filter(t => t.type === 'Work' && t.status !== 'Done');
+    
+    document.getElementById('dash-task-count').innerText = personalTodos.length + workTodos.length;
+    document.getElementById('dash-personal-count').innerText = personalTodos.length;
+    document.getElementById('dash-work-count').innerText = workTodos.length;
+
+    // 3. Render Top 3 Tasks
+    const list = document.getElementById('dash-todo-list');
+    list.innerHTML = '';
+    const topTasks = [...personalTodos, ...workTodos].slice(0, 3); // Get first 3
+    
+    if (topTasks.length === 0) {
+        list.innerHTML = '<li>No active tasks! Relax.</li>';
+    } else {
+        topTasks.forEach(t => {
+            const li = document.createElement('li');
+            li.innerHTML = `<span>${t.title}</span> <span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px;">${t.type}</span>`;
+            list.appendChild(li);
+        });
+    }
+
+    // 4. Money Stats (Payback Remaining)
+    const paybacks = allBudgetItems.filter(i => i.category === 'Payback');
+    // Sum up 'total_cost' (assuming that's the debt field)
+    // If you want to calculate "Total Cost - Amount Paid", you'd need logic for that. 
+    // For now, let's sum 'total_cost' as "Left to pay" based on your previous description.
+    const totalDebt = paybacks.reduce((sum, item) => sum + (item.total_cost || 0), 0);
+    document.getElementById('dash-debt-left').innerText = totalDebt.toFixed(2);
+
+    // 5. Scratchpad Load
+    const savedNote = localStorage.getItem('my_scratchpad');
+    if (savedNote) {
+        document.getElementById('dash-scratchpad').value = savedNote;
+    }
+}
+
+// Scratchpad Auto-Save
+document.getElementById('dash-scratchpad').addEventListener('input', (e) => {
+    localStorage.setItem('my_scratchpad', e.target.value);
+});
+
+// Update the setupNavigation to reload dashboard when clicked
+const dashboardLink = document.querySelector('a[href="#dashboard"]');
+if (dashboardLink) {
+    dashboardLink.addEventListener('click', () => {
+        // Refresh data to ensure numbers are up to date
+        fetchTasks().then(() => fetchBudget().then(loadDashboard));
+    });
+}
+
+// Initial Load
+document.addEventListener('DOMContentLoaded', () => {
+    // ... existing calls ...
+    // Wait for data, then load dashboard
+    setTimeout(loadDashboard, 1000); // Small delay to let fetches finish
+});
