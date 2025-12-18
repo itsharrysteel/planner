@@ -58,5 +58,26 @@ export async function onRequest(context) {
     }
   }
 
+  // --- BUDGET ITEMS ---
+    if (resource === 'budget_items' && path[2] === 'add') {
+        const info = await db.prepare(
+            'INSERT INTO budget_items (category, name, monthly_cost, total_cost) VALUES (?, ?, ?, ?)'
+        ).bind(data.category, data.name, data.monthly_cost, data.total_cost).run();
+        return Response.json(info);
+    }
+
+    if (resource === 'budget_items' && path[2] === 'toggle') {
+        // Toggle the "is_paid_this_month" status
+        const info = await db.prepare(
+            'UPDATE budget_items SET is_paid_this_month = ? WHERE id = ?'
+        ).bind(data.is_paid ? 1 : 0, data.id).run();
+        return Response.json(info);
+    }
+
+    if (resource === 'budget_items' && path[2] === 'delete') {
+         const info = await db.prepare('DELETE FROM budget_items WHERE id = ?').bind(data.id).run();
+         return Response.json(info);
+    }
+
   return new Response('Not Found', { status: 404 });
 }
