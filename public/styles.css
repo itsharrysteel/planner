@@ -87,194 +87,6 @@ h1 { margin-bottom: 1.5rem; color: var(--primary); }
     to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Daily Planning Styles --- */
-
-/* Tabs */
-.tab-container { margin-bottom: 1.5rem; border-bottom: 1px solid #ddd; }
-.tab-btn {
-    background: none; border: none;
-    padding: 0.8rem 1.5rem;
-    font-size: 1rem; cursor: pointer;
-    color: #666; border-bottom: 3px solid transparent;
-}
-.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: bold; }
-
-/* Kanban Board (Work View) */
-.kanban-board {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 Columns */
-    gap: 1rem;
-    height: calc(100vh - 200px); /* Fill screen */
-    overflow-x: auto;
-}
-
-.kanban-column {
-    background: #ebecf0;
-    border-radius: 8px;
-    padding: 1rem;
-    display: flex;
-    flex-direction: column;
-}
-
-.kanban-header {
-    font-weight: bold;
-    margin-bottom: 1rem;
-    display: flex; justify-content: space-between;
-    color: #172b4d;
-}
-
-/* Task Cards */
-.task-card {
-    background: white;
-    padding: 10px;
-    border-radius: 4px;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-    margin-bottom: 0.5rem;
-    cursor: grab;
-    border-left: 4px solid var(--accent);
-}
-
-.task-card:hover { background: #f4f5f7; }
-.task-meta { font-size: 0.8rem; color: #888; margin-top: 5px; }
-
-/* Personal List View */
-.personal-list { max-width: 800px; }
-.personal-task {
-    display: flex; align-items: center; gap: 10px;
-    padding: 1rem; background: white; border-bottom: 1px solid #eee;
-}
-
-/* --- GOALS & HABITS STYLES --- */
-
-.goals-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
-}
-
-.goal-card {
-    background: white;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    transition: transform 0.2s;
-    position: relative;
-    display: flex;
-    flex-direction: column;
-}
-
-.goal-card:hover { transform: translateY(-3px); }
-
-.goal-image {
-    height: 140px;
-    background-color: #eee;
-    background-size: cover;
-    background-position: center;
-}
-
-.goal-content { padding: 1rem; flex: 1; }
-
-.goal-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 0.5rem; }
-
-/* Progress Bar */
-.progress-container {
-    background: #eee;
-    height: 10px;
-    border-radius: 5px;
-    overflow: hidden;
-    margin: 10px 0;
-}
-.progress-fill {
-    height: 100%;
-    background: var(--accent);
-    width: 0%;
-    transition: width 0.3s ease;
-}
-
-.goal-stats {
-    display: flex; justify-content: space-between;
-    font-size: 0.85rem; color: #666; margin-bottom: 1rem;
-}
-
-/* Quick Actions */
-.goal-actions {
-    border-top: 1px solid #f0f0f0;
-    padding: 0.5rem;
-    display: flex;
-    justify-content: space-around;
-}
-
-.action-btn {
-    background: none; border: none;
-    color: var(--accent); font-weight: bold;
-    cursor: pointer; padding: 5px 10px;
-    font-size: 1.2rem;
-}
-.action-btn:hover { background: #f0f8ff; border-radius: 4px; }
-
-/* Detail Modal Textarea */
-.notes-area {
-    width: 100%; height: 100px;
-    padding: 10px; border: 1px solid #ddd;
-    border-radius: 6px; margin-top: 10px;
-    font-family: inherit; resize: vertical;
-}
-
-/* --- BUDGET STYLES --- */
-.budget-section { margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-.budget-header { display: flex; justify-content: space-between; margin-bottom: 1rem; border-bottom: 2px solid #f0f0f0; padding-bottom: 0.5rem; }
-.budget-total { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
-
-table.budget-table { width: 100%; border-collapse: collapse; }
-th { text-align: left; padding: 10px; color: #888; font-weight: normal; font-size: 0.9rem; }
-td { padding: 10px; border-bottom: 1px solid #eee; }
-tr:last-child td { border-bottom: none; }
-
-.money-col { font-family: monospace; font-size: 1rem; color: #333; }
-.paid-row { opacity: 0.5; background: #fafafa; text-decoration: line-through; }
-
-/* --- VISION BOARD STYLES --- */
-.vision-filter { margin-bottom: 2rem; display: flex; gap: 10px; flex-wrap: wrap; }
-.filter-btn {
-    padding: 0.5rem 1.2rem; border-radius: 20px; border: 1px solid #ddd;
-    background: white; cursor: pointer; transition: all 0.2s;
-}
-.filter-btn:hover, .filter-btn.active {
-    background: var(--primary); color: white; border-color: var(--primary);
-}
-
-.vision-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 1.5rem;
-}
-
-.vision-card {
-    background: white; border-radius: 12px; overflow: hidden;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    position: relative; transition: transform 0.2s;
-}
-.vision-card:hover { transform: scale(1.02); }
-
-.vision-img {
-    width: 100%; height: 200px; object-fit: cover; display: block;
-}
-
-.vision-overlay {
-    position: absolute; bottom: 0; left: 0; right: 0;
-    background: linear-gradient(transparent, rgba(0,0,0,0.8));
-    padding: 20px 10px 10px;
-    color: white;
-}
-.vision-title { font-weight: bold; font-size: 1rem; text-shadow: 0 1px 3px rgba(0,0,0,0.5); }
-.vision-delete {
-    position: absolute; top: 10px; right: 10px;
-    background: rgba(255,255,255,0.8); border-radius: 50%;
-    width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; color: red; font-weight: bold; opacity: 0; transition: opacity 0.2s;
-}
-.vision-card:hover .vision-delete { opacity: 1; }
-
 /* --- DASHBOARD STYLES --- */
 .dashboard-grid {
     display: grid;
@@ -298,12 +110,11 @@ tr:last-child td { border-bottom: none; }
 }
 .dashboard-list li:last-child { border-bottom: none; }
 
-/* The Scratchpad */
 .scratchpad-container {
     background: #fff9c4; /* Yellow notepad look */
     padding: 1.5rem; border-radius: 12px;
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    grid-row: span 2; /* Make it tall */
+    grid-row: span 2; 
     display: flex; flex-direction: column;
 }
 
@@ -315,3 +126,172 @@ tr:last-child td { border-bottom: none; }
     font-size: 1rem; line-height: 1.5;
     margin-top: 1rem;
 }
+
+/* --- Daily Planning Styles --- */
+.tab-container { margin-bottom: 1.5rem; border-bottom: 1px solid #ddd; }
+.tab-btn {
+    background: none; border: none;
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem; cursor: pointer;
+    color: #666; border-bottom: 3px solid transparent;
+}
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: bold; }
+
+.kanban-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    height: calc(100vh - 200px);
+    overflow-x: auto;
+}
+
+.kanban-column {
+    background: #ebecf0;
+    border-radius: 8px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.kanban-header {
+    font-weight: bold; margin-bottom: 1rem;
+    display: flex; justify-content: space-between; color: #172b4d;
+}
+
+.task-card {
+    background: white; padding: 10px; border-radius: 4px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+    margin-bottom: 0.5rem; cursor: grab;
+    border-left: 4px solid var(--accent);
+}
+.task-card:hover { background: #f4f5f7; }
+.task-meta { font-size: 0.8rem; color: #888; margin-top: 5px; }
+
+.personal-list { max-width: 800px; }
+.personal-task {
+    display: flex; align-items: center; gap: 10px;
+    padding: 1rem; background: white; border-bottom: 1px solid #eee;
+}
+
+/* --- GOALS & HABITS STYLES --- */
+.goals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.goal-card {
+    background: white; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+    position: relative; display: flex; flex-direction: column;
+}
+.goal-card:hover { transform: translateY(-3px); }
+
+.goal-image {
+    height: 140px; background-color: #eee;
+    background-size: cover; background-position: center;
+}
+
+.goal-content { padding: 1rem; flex: 1; }
+.goal-title { font-weight: bold; font-size: 1.1rem; margin-bottom: 0.5rem; }
+
+.progress-container {
+    background: #eee; height: 10px; border-radius: 5px;
+    overflow: hidden; margin: 10px 0;
+}
+.progress-fill {
+    height: 100%; background: var(--accent); width: 0%; transition: width 0.3s ease;
+}
+
+.goal-stats {
+    display: flex; justify-content: space-between;
+    font-size: 0.85rem; color: #666; margin-bottom: 1rem;
+}
+
+.goal-actions {
+    border-top: 1px solid #f0f0f0; padding: 0.5rem;
+    display: flex; justify-content: space-around;
+}
+
+.action-btn {
+    background: none; border: none;
+    color: var(--accent); font-weight: bold;
+    cursor: pointer; padding: 5px 10px; font-size: 1.2rem;
+}
+.action-btn:hover { background: #f0f8ff; border-radius: 4px; }
+
+.notes-area {
+    width: 100%; height: 100px; padding: 10px; border: 1px solid #ddd;
+    border-radius: 6px; margin-top: 10px; font-family: inherit; resize: vertical;
+}
+
+/* --- BUDGET STYLES --- */
+.budget-section { margin-bottom: 2rem; background: white; padding: 1.5rem; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.budget-header { display: flex; justify-content: space-between; margin-bottom: 1rem; border-bottom: 2px solid #f0f0f0; padding-bottom: 0.5rem; }
+.budget-total { font-size: 1.2rem; font-weight: bold; color: var(--primary); }
+
+table.budget-table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 10px; color: #888; font-weight: normal; font-size: 0.9rem; }
+td { padding: 10px; border-bottom: 1px solid #eee; }
+tr:last-child td { border-bottom: none; }
+
+.money-col { font-family: monospace; font-size: 1rem; color: #333; }
+.paid-row { opacity: 0.5; background: #fafafa; text-decoration: line-through; }
+
+/* --- VISION BOARD STYLES (MASONRY) --- */
+.vision-header { 
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; 
+}
+
+.vision-filter { 
+    margin-bottom: 2rem; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+}
+.filter-btn {
+    padding: 0.5rem 1.2rem; border-radius: 20px; border: 1px solid #ddd;
+    background: white; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.filter-btn:hover, .filter-btn.active {
+    background: var(--primary); color: white; border-color: var(--primary);
+}
+.add-cat-btn {
+    padding: 0.5rem 1rem; border: 1px dashed #ccc; background: none; 
+    border-radius: 20px; color: #666; cursor: pointer; font-size: 0.8rem;
+}
+
+.vision-grid {
+    column-count: 4; 
+    column-gap: 1.5rem;
+}
+@media (max-width: 900px) { .vision-grid { column-count: 3; } }
+@media (max-width: 600px) { .vision-grid { column-count: 2; } }
+
+.vision-card {
+    break-inside: avoid; 
+    margin-bottom: 1.5rem;
+    background: white; border-radius: 12px; overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    position: relative; transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.vision-card.dragging { opacity: 0.4; border: 2px dashed var(--accent); }
+.vision-card.drag-over { transform: scale(1.05); box-shadow: 0 0 15px rgba(52, 152, 219, 0.5); }
+
+.vision-img { width: 100%; height: auto; display: block; }
+
+.vision-overlay { background: white; padding: 10px; border-top: 1px solid #eee; }
+
+.vision-title { 
+    font-weight: bold; font-size: 0.95rem; cursor: text; 
+    padding: 2px 4px; border-radius: 4px;
+}
+.vision-title:hover { background: #f0f0f0; }
+.vision-title:focus { background: white; outline: 2px solid var(--accent); }
+
+.vision-delete {
+    position: absolute; top: 10px; right: 10px;
+    background: rgba(255,255,255,0.9); border-radius: 50%;
+    width: 25px; height: 25px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; color: red; opacity: 0; transition: opacity 0.2s; z-index: 10;
+}
+.vision-card:hover .vision-delete { opacity: 1; }
