@@ -296,7 +296,7 @@ function renderBudget() {
 
         list.innerHTML = '';
         const items = allBudgetItems.filter(i => i.category === cat);
-        let categoryTotal = 0;
+        let categoryRemaining = 0; // We will use this to track "Left to Pay"
 
         items.forEach(item => {
             const isPaid = item.is_paid_this_month === 1;
@@ -306,30 +306,31 @@ function renderBudget() {
             let monthsDisplay = "-";
 
             if (cat === 'Payback') {
-                // 1. Calculate Months Left
+                // 1. Calculate Dynamic Monthly Payment
                 if (item.final_payment_date) {
                     const now = new Date();
                     const due = new Date(item.final_payment_date);
-                    
-                    // accurate month difference (handles years correctly)
                     const monthsDiff = (due.getFullYear() - now.getFullYear()) * 12 + (due.getMonth() - now.getMonth());
-                    
-                    // Ensure we don't divide by zero or negative
                     const monthsLeft = Math.max(1, monthsDiff); 
                     
-                    // 2. Calculate Required Monthly Payment
-                    // Formula: Total Debt / Months Remaining
                     displayMonthly = item.total_cost / monthsLeft;
-                    
                     monthsDisplay = `${monthsLeft} mths`;
                 }
                 
-                // Add to the category total (Sum of DEBT remaining)
-                categoryTotal += (item.total_cost || 0);
+                // 2. Payback Header Logic: 
+                // Show Total Debt, but subtract the monthly amount if checked (Visual Progress)
+                if (isPaid) {
+                    categoryRemaining += (item.total_cost - displayMonthly);
+                } else {
+                    categoryRemaining += item.total_cost;
+                }
 
             } else {
-                // Normal bills just add the monthly cost
-                categoryTotal += item.monthly_cost;
+                // 3. Bills Header Logic:
+                // Only add to the total if it is NOT paid (Remaining Bills)
+                if (!isPaid) {
+                    categoryRemaining += item.monthly_cost;
+                }
             }
             // --- LOGIC END ---
 
@@ -344,12 +345,15 @@ function renderBudget() {
 
             // Render Row
             if (cat === 'Payback') {
+                // Calculate the "Total Left" for this specific row (Visual only)
+                const currentDebtDisplay = isPaid ? (item.total_cost - displayMonthly) : item.total_cost;
+
                 tr.innerHTML = `
                     <td style="cursor:grab; color:#ccc">☰</td>
                     <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
                     <td>${item.name}</td>
                     <td class="money-col">£${displayMonthly.toFixed(2)}</td>
-                    <td class="money-col">£${item.total_cost.toFixed(2)}</td>
+                    <td class="money-col">£${currentDebtDisplay.toFixed(2)}</td>
                     <td style="font-size:0.8rem; color:#666;">${monthsDisplay}</td>
                     <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
                 `;
@@ -365,7 +369,8 @@ function renderBudget() {
             list.appendChild(tr);
         });
 
-        totalSpan.innerText = categoryTotal.toFixed(2);
+        // Update the header number
+        totalSpan.innerText = categoryRemaining.toFixed(2);
     });
 }
 
