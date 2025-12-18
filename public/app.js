@@ -269,18 +269,26 @@ async function quickUpdateGoal(id, change) {
 }
 
 /* --- BUDGET LOGIC --- */
+
 let allBudgetItems = [];
 
 async function fetchBudget() {
     try {
         const res = await fetch('/api/budget_items');
         allBudgetItems = await res.json();
+        
+        // Auto-fix sort order if missing
+        allBudgetItems.forEach(i => { if(!i.position_order) i.position_order = i.id; });
+        allBudgetItems.sort((a,b) => (a.position_order - b.position_order));
+
         renderBudget();
+        checkPaydayReset(); // Check if we need to reset for new month
     } catch (err) { console.error(err); }
 }
 
 function renderBudget() {
     const categories = ['Barclays', 'Monzo', 'Payback'];
+    
     categories.forEach(cat => {
         const list = document.getElementById(`list-${cat.toLowerCase()}`);
         const totalSpan = document.getElementById(`total-${cat.toLowerCase()}`);
@@ -292,39 +300,99 @@ function renderBudget() {
 
         items.forEach(item => {
             const isPaid = item.is_paid_this_month === 1;
+            
+            // Calc Totals
             if (cat === 'Payback') total += (item.total_cost || 0); 
             else total += item.monthly_cost;
 
             const tr = document.createElement('tr');
-            if(isPaid) tr.className = 'paid-row';
+            tr.className = isPaid ? 'paid-row' : '';
+            
+            // Drag & Drop Attributes
+            tr.draggable = true;
+            tr.dataset.id = item.id;
+            tr.dataset.cat = cat; // Ensure we only drag within same table
+            addBudgetDragEvents(tr);
 
+            // Special Logic for Payback Columns
             if (cat === 'Payback') {
+                // Calculate Months Left based on Final Date
+                let monthsLeft = "Unknown";
+                if (item.final_payment_date) {
+                    const now = new Date();
+                    const end = new Date(item.final_payment_date);
+                    // Difference in months
+                    monthsLeft = (end.getFullYear() - now.getFullYear()) * 12 + (end.getMonth() - now.getMonth());
+                    if (monthsLeft < 0) monthsLeft = 0;
+                }
+
+                // If ticked, visually deduct from total for a satisfying "progress" feel
+                // (Real deduction happens on monthly reset)
+                const displayTotal = isPaid ? (item.total_cost - item.monthly_cost) : item.total_cost;
+
                 tr.innerHTML = `
-                    <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
+                    <td style="cursor:grab">☰</td> <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
                     <td>${item.name}</td>
                     <td class="money-col">£${item.monthly_cost}</td>
-                    <td class="money-col">£${item.total_cost}</td>
-                    <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>`;
+                    <td class="money-col">£${displayTotal.toFixed(2)}</td>
+                    <td style="font-size:0.8rem; color:#666;">${monthsLeft} mths</td>
+                    <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
+                `;
             } else {
                 tr.innerHTML = `
+                    <td style="cursor:grab">☰</td>
                     <td><input type="checkbox" ${isPaid ? 'checked' : ''} onchange="toggleBudgetPaid(${item.id}, this.checked)"></td>
                     <td>${item.name}</td>
                     <td class="money-col">£${item.monthly_cost}</td>
-                    <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>`;
+                    <td><button onclick="deleteBudgetItem(${item.id})" style="color:red; border:none; background:none; cursor:pointer;">x</button></td>
+                `;
             }
             list.appendChild(tr);
         });
+
         totalSpan.innerText = total.toFixed(2);
     });
 }
 
+// --- PAYDAY RESET LOGIC ---
+async function checkPaydayReset() {
+    const lastCheck = localStorage.getItem('last_budget_check_month');
+    const currentMonth = new Date().toISOString().slice(0, 7); // "2026-01"
+
+    // If we haven't stored a date, store today and exit (first run)
+    if (!lastCheck) {
+        localStorage.setItem('last_budget_check_month', currentMonth);
+        return;
+    }
+
+    // If stored month is different from current month -> TRIGGER RESET
+    if (lastCheck !== currentMonth) {
+        console.log("New month detected! Resetting budget...");
+        
+        // Call API to process the math (Deduct totals, uncheck boxes)
+        await fetch('/api/budget_items/reset', { method: 'POST' });
+        
+        // Update local storage so we don't run it again this month
+        localStorage.setItem('last_budget_check_month', currentMonth);
+        
+        // Reload UI
+        fetchBudget();
+        alert("Welcome to a new month! \n\n• Paybacks have been updated.\n• Checkboxes have been reset.");
+    }
+}
+
+// --- MODAL & SAVING ---
 function openBudgetModal(category) {
     document.getElementById('budget-category').value = category;
     document.getElementById('budget-modal-title').innerText = `Add to ${category}`;
     document.getElementById('budget-name').value = '';
     document.getElementById('budget-monthly').value = '';
     document.getElementById('budget-total').value = '';
-    document.getElementById('payback-fields').style.display = category === 'Payback' ? 'block' : 'none';
+    document.getElementById('budget-date').value = ''; // Reset date
+    
+    const paybackFields = document.getElementById('payback-fields');
+    paybackFields.style.display = category === 'Payback' ? 'block' : 'none';
+    
     document.getElementById('budget-modal').style.display = 'block';
 }
 
@@ -333,20 +401,78 @@ async function saveBudgetItem() {
     const name = document.getElementById('budget-name').value;
     const monthly = parseFloat(document.getElementById('budget-monthly').value) || 0;
     const total = parseFloat(document.getElementById('budget-total').value) || 0;
+    const finalDate = document.getElementById('budget-date').value;
+
     if(!name) return;
+
     await fetch('/api/budget_items/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ category, name, monthly_cost: monthly, total_cost: total })
+        body: JSON.stringify({ 
+            category, name, 
+            monthly_cost: monthly, 
+            total_cost: total,
+            final_payment_date: finalDate 
+        })
     });
+
     document.getElementById('budget-modal').style.display = 'none';
     fetchBudget();
 }
 
+// --- DRAG AND DROP (Budget Specific) ---
+let budgetDraggedId = null;
+
+function addBudgetDragEvents(row) {
+    row.addEventListener('dragstart', function(e) {
+        budgetDraggedId = this.dataset.id;
+        e.dataTransfer.effectAllowed = 'move';
+        this.style.opacity = '0.4';
+    });
+    
+    row.addEventListener('dragover', function(e) {
+        e.preventDefault(); // Allow drop
+        e.dataTransfer.dropEffect = 'move';
+    });
+
+    row.addEventListener('drop', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.style.opacity = '1';
+        
+        const targetId = this.dataset.id;
+        // Only allow swapping within same category/table
+        if (budgetDraggedId && targetId && budgetDraggedId !== targetId && this.dataset.cat === document.querySelector(`tr[data-id="${budgetDraggedId}"]`).dataset.cat) {
+            
+            // Optimistic Swap
+            const itemA = allBudgetItems.find(i => i.id == budgetDraggedId);
+            const itemB = allBudgetItems.find(i => i.id == targetId);
+            
+            const temp = itemA.position_order;
+            itemA.position_order = itemB.position_order;
+            itemB.position_order = temp;
+            
+            renderBudget();
+
+            // API Call
+            await fetch('/api/budget_items/update_order', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ id: budgetDraggedId, swap_with_id: targetId })
+            });
+        }
+    });
+    
+    row.addEventListener('dragend', function() {
+        this.style.opacity = '1';
+    });
+}
+
+// Standard Toggle/Delete...
 async function toggleBudgetPaid(id, isPaid) {
     const item = allBudgetItems.find(i => i.id === id);
     if(item) item.is_paid_this_month = isPaid ? 1 : 0;
-    renderBudget();
+    renderBudget(); // Re-render to see immediate "Total Left" update for Paybacks
     await fetch('/api/budget_items/toggle', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
