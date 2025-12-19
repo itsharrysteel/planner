@@ -197,45 +197,125 @@ function renderTasks() {
     }
 }
 
-// --- PERSONAL DRAG & DROP ---
+// --- PERSONAL DRAG & DROP (Insert Logic) ---
 let personalDraggedId = null;
 
 function addPersonalDragEvents(row) {
     row.addEventListener('dragstart', function(e) {
         personalDraggedId = this.dataset.id;
         e.dataTransfer.effectAllowed = 'move';
-        this.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', this.dataset.id); // For Firefox compatibility
+        setTimeout(() => this.classList.add('dragging'), 0);
     });
     
-    row.addEventListener('dragover', function(e) { e.preventDefault(); });
-
-    row.addEventListener('drop', async function(e) {
-        e.preventDefault();
-        this.classList.remove('dragging');
+    row.addEventListener('dragover', function(e) { 
+        e.preventDefault(); 
         
-        const targetId = this.dataset.id;
-        if (personalDraggedId && targetId && personalDraggedId !== targetId) {
-            const itemA = allTasks.find(t => t.id == personalDraggedId);
-            const itemB = allTasks.find(t => t.id == targetId);
-            
-            if (!itemA || !itemB || itemA.type !== 'Personal' || itemB.type !== 'Personal') return;
-
-            const temp = itemA.position_order;
-            itemA.position_order = itemB.position_order;
-            itemB.position_order = temp;
-            
-            allTasks.sort((a,b) => a.position_order - b.position_order);
-            renderTasks();
-
-            await fetch('/api/tasks/update_order', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id: personalDraggedId, swap_with_id: targetId })
-            });
+        // Add visual cue (Line above or below)
+        const rect = this.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+        
+        this.style.borderTop = '';
+        this.style.borderBottom = '';
+        
+        if (e.clientY < midpoint) {
+            this.style.borderTop = '2px solid var(--accent)';
+        } else {
+            this.style.borderBottom = '2px solid var(--accent)';
         }
     });
     
-    row.addEventListener('dragend', function() { this.classList.remove('dragging'); });
+    row.addEventListener('dragleave', function() {
+        this.style.borderTop = '';
+        this.style.borderBottom = '';
+    });
+
+    row.addEventListener('drop', async function(e) {
+        e.preventDefault();
+        this.style.borderTop = '';
+        this.style.borderBottom = '';
+        
+        // Find the actual dragged row (DOM element)
+        const draggedRow = document.querySelector(`.personal-header[data-id="${personalDraggedId}"], .personal-task[data-id="${personalDraggedId}"]`);
+        if (draggedRow) draggedRow.classList.remove('dragging');
+
+        const targetId = this.dataset.id;
+        if (!personalDraggedId || !targetId || personalDraggedId === targetId) return;
+
+        // 1. Calculate Index positions
+        // We need the list exactly as it is CURRENTLY rendered on screen to know neighbors
+        const allRows = Array.from(document.querySelectorAll('#personal-task-list > div'));
+        const draggedIndex = allRows.findIndex(el => el.dataset.id == personalDraggedId);
+        const targetIndex = allRows.findIndex(el => el.dataset.id == targetId);
+
+        if (draggedIndex === -1 || targetIndex === -1) return;
+
+        // 2. Determine if dropping Above or Below target
+        const rect = this.getBoundingClientRect();
+        const midpoint = rect.top + rect.height / 2;
+        const dropAfter = e.clientY > midpoint;
+
+        // 3. Find the Neighbor orders
+        // We want to squeeze between Target and its Neighbor
+        let itemAbove, itemBelow;
+        
+        const targetItem = allTasks.find(t => t.id == targetId);
+
+        if (dropAfter) {
+            // Dropping BELOW target
+            // Order should be between Target and Target+1
+            itemAbove = targetItem;
+            // Find item visually after the target (excluding the dragged item itself logic is tricky, 
+            // simpler to just look at the array orders)
+            // Let's rely on sorted allTasks array for math
+            const sorted = allTasks.filter(t => t.type === 'Personal'); // Get only personal tasks
+            // We need the index of target in the DATA array
+            const tDataIdx = sorted.findIndex(t => t.id == targetId);
+            itemBelow = sorted[tDataIdx + 1]; // Item currently below target
+        } else {
+            // Dropping ABOVE target
+            itemAbove = null; // We need to check previous item
+            const sorted = allTasks.filter(t => t.type === 'Personal');
+            const tDataIdx = sorted.findIndex(t => t.id == targetId);
+            if(tDataIdx > 0) itemAbove = sorted[tDataIdx - 1];
+            itemBelow = targetItem;
+        }
+
+        // 4. Calculate Magic Number
+        let newOrder;
+        const orderBelow = itemBelow ? (itemBelow.position_order || 0) : null;
+        const orderAbove = itemAbove ? (itemAbove.position_order || 0) : null;
+
+        if (itemAbove && itemBelow) {
+            newOrder = (orderAbove + orderBelow) / 2;
+        } else if (itemAbove) {
+            newOrder = orderAbove + 10000; // End of list
+        } else if (itemBelow) {
+            newOrder = orderBelow - 10000; // Top of list
+        } else {
+            newOrder = Date.now(); // First item ever
+        }
+
+        // 5. Apply & Render
+        const draggedItem = allTasks.find(t => t.id == personalDraggedId);
+        draggedItem.position_order = newOrder;
+        
+        allTasks.sort((a,b) => a.position_order - b.position_order);
+        renderTasks();
+
+        // 6. Save
+        await fetch('/api/tasks/update_order', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ id: personalDraggedId, new_order: newOrder })
+        });
+    });
+    
+    row.addEventListener('dragend', function() { 
+        this.classList.remove('dragging'); 
+        this.style.borderTop = '';
+        this.style.borderBottom = '';
+    });
 }
 
 // --- WORK KANBAN DRAG & DROP ---
