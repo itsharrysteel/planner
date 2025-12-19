@@ -230,16 +230,19 @@ function openDateMenu(e, source) {
     }
 
     const menu = document.getElementById('date-context-menu');
-    const rect = e.target.getBoundingClientRect();
     
-    // Position menu
-    menu.style.left = rect.left + 'px';
-    menu.style.top = (rect.bottom + 5) + 'px';
+    // Use currentTarget to get the element we attached the listener to (the button/badge)
+    const rect = e.currentTarget.getBoundingClientRect();
+    
+    // Position menu relative to the document (including scroll)
+    menu.style.left = (rect.left + window.scrollX) + 'px';
+    menu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
     menu.style.display = 'block';
 }
 
 async function applyDatePreset(preset) {
     const menu = document.getElementById('date-context-menu');
+    // Hide menu immediately so it doesn't get in the way
     menu.style.display = 'none';
     
     let newDate = "";
@@ -257,11 +260,17 @@ async function applyDatePreset(preset) {
         newDate = "";
     } else if (preset === 'custom') {
         const picker = document.getElementById('hidden-date-picker');
+        
+        // Move the hidden picker to where the menu was 
+        // This forces the browser calendar to spawn near the user's mouse
+        picker.style.top = menu.style.top;
+        picker.style.left = menu.style.left;
+        
         picker.showPicker ? picker.showPicker() : picker.click(); 
-        return; 
+        return; // Stop here, wait for 'onchange' event
     }
 
-    // Apply the date
+    // Apply the date directly for presets
     if (activeModalField) {
         updateModalDateUI(newDate, activeModalField);
     } else if (activeDateTaskId) {
@@ -275,6 +284,7 @@ async function applyCustomDate(dateStr) {
     } else if (activeDateTaskId) {
         await saveTaskDate(activeDateTaskId, dateStr);
     }
+    // Reset picker so the same date can be picked again if needed
     document.getElementById('hidden-date-picker').value = '';
 }
 
