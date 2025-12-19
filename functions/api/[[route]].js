@@ -61,16 +61,29 @@ export async function onRequest(context) {
     }
 
     if (resource === 'tasks' && path[2] === 'update_order') {
+        // 1. Precise Move (Insert Logic) - Used for Personal List
+        if (data.id && data.new_order !== undefined) {
+             const info = await db.prepare('UPDATE tasks SET position_order = ? WHERE id = ?')
+                 .bind(data.new_order, data.id).run();
+             return Response.json(info);
+        }
+
+        // 2. Kanban Status Change (Moving between columns)
+        if (data.id && data.new_status) {
+            // Move to bottom of new column
+            const info = await db.prepare('UPDATE tasks SET status = ?, position_order = ? WHERE id = ?')
+                .bind(data.new_status, Date.now(), data.id).run();
+            return Response.json(info);
+        }
+
+        // 3. Swap Logic (Fallback / Kanban Reordering)
         if (data.swap_with_id) {
-            // Reorder Logic
             const itemA = await db.prepare('SELECT id, position_order, status FROM tasks WHERE id = ?').bind(data.id).first();
             const itemB = await db.prepare('SELECT id, position_order, status FROM tasks WHERE id = ?').bind(data.swap_with_id).first();
             
-            // If dragging, inherit status (so you can drag into a different Kanban column)
             let newStatus = itemA.status;
             if (itemA.status !== itemB.status) newStatus = itemB.status;
 
-            // Handle Nulls
             const orderA = itemA.position_order || itemA.id;
             const orderB = itemB.position_order || itemB.id;
 
@@ -80,6 +93,7 @@ export async function onRequest(context) {
             ]);
             return Response.json({ success: true });
         } 
+    } 
         else if (data.new_status) {
             const info = await db.prepare('UPDATE tasks SET status = ?, position_order = ? WHERE id = ?')
                 .bind(data.new_status, Date.now(), data.id).run();
