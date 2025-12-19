@@ -476,3 +476,30 @@ column-count: 4;
     padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;
 }
 .delete-btn:hover { background: #ffcdd2; }
+
+/* --- FIX HIDDEN PICKER --- */
+.hidden-picker {
+    position: absolute;
+    opacity: 0;
+    top: 0; left: 0;
+    width: 0; height: 0;
+    z-index: -1;
+    border: 0; padding: 0; margin: 0;
+}
+
+/* --- MODAL DATE BUTTON --- */
+.date-input-fake {
+    width: 100%;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.9rem;
+    color: #333;
+}
+.date-input-fake:hover { border-color: var(--accent); }
+.date-input-fake span { pointer-events: none; }
