@@ -246,16 +246,32 @@
                     <input type="hidden" id="task-due">
                 </div>
 
-                <div id="work-dates-wrapper" style="display:contents;">
-                    <div>
-                        <label style="font-size:0.8rem;">Start Date</label>
-                        <div id="modal-start-btn" class="date-input-fake" onclick="openDateMenu(event, 'modal-start')">
-                            <span id="modal-start-text">Add Date</span>
-                            <span style="color:#888;">📅</span>
-                        </div>
-                        <input type="hidden" id="task-start">
+                <div id="work-dates-wrapper" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
+                <div>
+                    <label style="font-size:0.8rem;">Start Date</label>
+                    <div id="modal-start-btn" class="date-input-fake" onclick="openDateMenu(event, 'modal-start')">
+                        <span id="modal-start-text">Add Date</span>
+                        <span style="color:#888;">📅</span>
                     </div>
+                    <input type="hidden" id="task-start">
                 </div>
+                <div>
+                    <label style="font-size:0.8rem;">Review Date</label>
+                    <div id="modal-review-btn" class="date-input-fake" onclick="openDateMenu(event, 'modal-review')">
+                        <span id="modal-review-text">Add Date</span>
+                        <span style="color:#888;">📅</span>
+                    </div>
+                    <input type="hidden" id="task-review">
+                </div>
+            </div>
+
+            <div style="margin-top:10px;">
+                <label style="font-size:0.8rem;">Due Date</label>
+                <div id="modal-due-btn" class="date-input-fake" onclick="openDateMenu(event, 'modal-due')">
+                    <span id="modal-due-text">Add Date</span>
+                    <span style="color:#888;">📅</span>
+                </div>
+                <input type="hidden" id="task-due">
             </div>
             
             <div id="work-review-wrapper" style="margin-top:10px;">
