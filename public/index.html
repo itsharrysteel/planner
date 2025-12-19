@@ -210,6 +210,10 @@
     <div style="background:white; width:500px; max-width:95%; margin:50px auto; padding:2rem; border-radius:8px; max-height:90vh; overflow-y:auto;">
         <h2 id="task-modal-title">Edit Task</h2>
         <input type="hidden" id="task-id">
+        <input type="hidden" id="task-status"><div id="task-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:2000;">
+    <div style="background:white; width:500px; max-width:95%; margin:50px auto; padding:2rem; border-radius:8px; max-height:90vh; overflow-y:auto;">
+        <h2 id="task-modal-title">Edit Task</h2>
+        <input type="hidden" id="task-id">
         <input type="hidden" id="task-status">
 
         <label style="display:block; margin-top:10px; font-weight:bold; font-size:0.9rem;">Task Name</label>
@@ -223,7 +227,7 @@
                     <option value="Work">Work</option>
                 </select>
             </div>
-            <div style="flex:1;">
+            <div style="flex:1;" id="status-container">
                 <label style="font-size:0.9rem;">Status</label>
                 <select id="task-status-select" style="width:100%; padding:0.5rem; margin-top:5px;">
                     <option value="Todo">To Do</option>
@@ -237,24 +241,31 @@
         <label style="display:block; margin-top:15px; font-weight:bold; font-size:0.9rem;">Description / Notes</label>
         <textarea id="task-desc" rows="4" style="width:100%; padding:0.5rem; margin-top:5px; border:1px solid #ccc; border-radius:4px;" placeholder="Add details..."></textarea>
 
-        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-top:15px;">
-            <div>
-                <label style="font-size:0.8rem;">Start Date</label>
-                <input type="date" id="task-start" style="width:100%; padding:0.4rem;">
-            </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
             <div>
                 <label style="font-size:0.8rem;">Due Date</label>
-                <input type="date" id="task-due" style="width:100%; padding:0.4rem;">
+                <div id="modal-due-btn" class="date-input-fake" onclick="openDateMenu(event, 'modal')">
+                    <span id="modal-due-text">Add Date</span>
+                    <span style="color:#888;">📅</span>
+                </div>
+                <input type="hidden" id="task-due">
             </div>
-            <div>
-                <label style="font-size:0.8rem;">Review Date</label>
-                <input type="date" id="task-review" style="width:100%; padding:0.4rem;">
-            </div>
+
+            <div id="work-dates-wrapper" style="display:contents;">
+                <div>
+                    <label style="font-size:0.8rem;">Start Date</label>
+                    <input type="date" id="task-start" style="width:100%; padding:0.4rem;">
+                </div>
+                </div>
+        </div>
+        
+        <div id="work-review-wrapper" style="margin-top:10px;">
+             <label style="font-size:0.8rem;">Review Date</label>
+             <input type="date" id="task-review" style="width:100%; padding:0.4rem;">
         </div>
 
         <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;">
             <button type="button" onclick="deleteTask()" class="delete-btn">Delete</button>
-            
             <div>
                 <button onclick="document.getElementById('task-modal').style.display='none'" style="margin-right:10px; padding:0.5rem 1rem; cursor:pointer;">Cancel</button>
                 <button onclick="saveTask()" style="background:var(--accent); color:white; padding:0.5rem 1rem; border:none; cursor:pointer; border-radius:4px;">Save Task</button>
@@ -348,7 +359,7 @@
         </div>
     </div>
     
-    <input type="date" id="hidden-date-picker" style="display:none;" onchange="applyCustomDate(this.value)">
+    <input type="date" id="hidden-date-picker" class="hidden-picker" onchange="applyCustomDate(this.value)">
 
     <script src="app.js"></script>
 </body>
