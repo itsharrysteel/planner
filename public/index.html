@@ -329,6 +329,31 @@
         </div>
     </div>
 
+    <div id="date-context-menu" class="context-menu" style="display:none;">
+        <div class="menu-option" onclick="applyDatePreset('today')">
+            <span>⭐️ Today</span>
+        </div>
+        <div class="menu-option" onclick="applyDatePreset('tomorrow')">
+            <span>☀️ Tomorrow</span>
+        </div>
+        <div class="menu-option" onclick="applyDatePreset('next-week')">
+            <span>🗓️ Next Week</span>
+        </div>
+        <div class="menu-option" onclick="applyDatePreset('custom')">
+            <span>⋯ Custom...</span>
+        </div>
+        <div class="menu-divider"></div>
+        <div class="menu-option danger" onclick="applyDatePreset('clear')">
+            <span>x Remove Date</span>
+        </div>
+    </div>
+    
+    <input type="date" id="hidden-date-picker" style="display:none;" onchange="applyCustomDate(this.value)">
+
+    <script src="app.js"></script>
+</body>
+</html>
+    
     <script src="app.js"></script>
 </body>
 </html>
