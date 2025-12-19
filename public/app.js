@@ -177,6 +177,17 @@ function renderTasks() {
                     else if (diffDays <= 3) { colorClass = 'urgent-soon'; dateBadge = 'Due Soon'; }
                 }
 
+                // Format Date: "Friday 19th Dec"
+                let formattedDue = "";
+                if (task.due_date) {
+                    const d = new Date(task.due_date);
+                    const day = d.getDate();
+                    const suffix = (day > 3 && day < 21) ? 'th' : ['th', 'st', 'nd', 'rd'][day % 10] || 'th';
+                    const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
+                    const month = d.toLocaleDateString('en-GB', { month: 'short' });
+                    formattedDue = `${weekday} ${day}${suffix} ${month}`;
+                }
+
                 const card = document.createElement('div');
                 card.className = `task-card ${colorClass}`;
                 card.draggable = true;
@@ -185,7 +196,7 @@ function renderTasks() {
                 card.innerHTML = `
                     <div style="font-weight:600;">${task.title}</div>
                     ${dateBadge ? `<span class="task-date-badge">${dateBadge}</span>` : ''}
-                    ${task.due_date ? `<div class="task-meta">Due: ${task.due_date}</div>` : ''}
+                    ${task.due_date ? `<div class="task-meta">Due: ${formattedDue}</div>` : ''}
                 `;
                 card.onclick = () => openTaskModal(task); 
                 addTaskDragEvents(card); 
@@ -458,10 +469,9 @@ function openTaskModal(task) {
         const statusContainer = document.getElementById('status-container');
         if(statusContainer) statusContainer.style.visibility = (type === 'Personal') ? 'hidden' : 'visible';
         
+        // Toggle the entire Work Dates row (Start & Review)
         const workDates = document.getElementById('work-dates-wrapper');
-        const reviewDate = document.getElementById('work-review-wrapper');
-        if(workDates) workDates.style.display = (type === 'Personal') ? 'none' : 'contents';
-        if(reviewDate) reviewDate.style.display = (type === 'Personal') ? 'none' : 'block';
+        if(workDates) workDates.style.display = (type === 'Personal') ? 'none' : 'grid';
     };
 
     if (task) {
