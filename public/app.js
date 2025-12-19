@@ -7,22 +7,22 @@ function setupNavigation() {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const targetId = link.getAttribute('href').substring(1);
-            
-            // Update Sidebar
             links.forEach(l => l.classList.remove('active'));
             link.classList.add('active');
-
-            // Update Page Section
             sections.forEach(section => {
                 section.classList.remove('active');
                 if (section.id === targetId) section.classList.add('active');
             });
-
-            // Refresh Data if Dashboard
-            if(targetId === 'dashboard') {
-                fetchTasks().then(() => fetchBudget().then(loadDashboard));
-            }
+            if(targetId === 'dashboard') fetchTasks().then(() => fetchBudget().then(loadDashboard));
         });
+    });
+
+    // Close context menu when clicking elsewhere
+    document.addEventListener('click', (e) => {
+        const menu = document.getElementById('date-context-menu');
+        if (menu && menu.style.display === 'block' && !e.target.closest('.personal-date-badge') && !e.target.closest('.context-menu')) {
+            menu.style.display = 'none';
+        }
     });
 }
 
@@ -39,28 +39,19 @@ function loadDashboard() {
     if(greetEl) greetEl.innerText = greet + ", User";
     if(dateEl) dateEl.innerText = date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
-    // Task Stats
     const personalTodos = allTasks.filter(t => t.type === 'Personal' && t.status !== 'Done');
     const workTodos = allTasks.filter(t => t.type === 'Work' && t.status !== 'Done');
     
-    const countEl = document.getElementById('dash-task-count');
-    if(countEl) countEl.innerText = personalTodos.length + workTodos.length;
-    
-    const pCount = document.getElementById('dash-personal-count');
-    if(pCount) pCount.innerText = personalTodos.length;
-    
-    const wCount = document.getElementById('dash-work-count');
-    if(wCount) wCount.innerText = workTodos.length;
+    if(document.getElementById('dash-task-count')) document.getElementById('dash-task-count').innerText = personalTodos.length + workTodos.length;
+    if(document.getElementById('dash-personal-count')) document.getElementById('dash-personal-count').innerText = personalTodos.length;
+    if(document.getElementById('dash-work-count')) document.getElementById('dash-work-count').innerText = workTodos.length;
 
-    // Top 3 Tasks
     const list = document.getElementById('dash-todo-list');
     if(list) {
         list.innerHTML = '';
         const topTasks = [...personalTodos, ...workTodos].slice(0, 3);
-        
-        if (topTasks.length === 0) {
-            list.innerHTML = '<li>No active tasks! Relax.</li>';
-        } else {
+        if (topTasks.length === 0) list.innerHTML = '<li>No active tasks! Relax.</li>';
+        else {
             topTasks.forEach(t => {
                 const li = document.createElement('li');
                 li.innerHTML = `<span>${t.title}</span> <span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px;">${t.type}</span>`;
@@ -69,18 +60,13 @@ function loadDashboard() {
         }
     }
 
-    // Money Stats
     const paybacks = allBudgetItems.filter(i => i.category === 'Payback');
     const totalDebt = paybacks.reduce((sum, item) => sum + (item.total_cost || 0), 0);
-    const debtEl = document.getElementById('dash-debt-left');
-    if(debtEl) debtEl.innerText = totalDebt.toFixed(2);
+    if(document.getElementById('dash-debt-left')) document.getElementById('dash-debt-left').innerText = totalDebt.toFixed(2);
 
-    // Scratchpad
     const savedNote = localStorage.getItem('my_scratchpad');
     const scratchEl = document.getElementById('dash-scratchpad');
-    if (savedNote && scratchEl) {
-        scratchEl.value = savedNote;
-    }
+    if (savedNote && scratchEl) scratchEl.value = savedNote;
 }
 
 const scratchpad = document.getElementById('dash-scratchpad');
@@ -97,11 +83,8 @@ async function fetchTasks() {
     try {
         const res = await fetch('/api/tasks');
         allTasks = await res.json();
-        
-        // Ensure sorting
         allTasks.forEach(t => { if(!t.position_order) t.position_order = t.id; });
         allTasks.sort((a,b) => a.position_order - b.position_order);
-        
         renderTasks();
     } catch (err) { console.error("Error loading tasks:", err); }
 }
@@ -118,8 +101,6 @@ function renderTasks() {
         'On-Hold': document.querySelector('#col-onhold .task-container'),
         'Done': document.querySelector('#col-done .task-container')
     };
-    
-    // Clear columns if they exist (Work tab might be hidden)
     if(columns['Todo']) Object.values(columns).forEach(col => col.innerHTML = '');
 
     const counts = { 'Todo': 0, 'In-Progress': 0, 'On-Hold': 0, 'Done': 0 };
@@ -137,21 +118,50 @@ function renderTasks() {
                 `;
             } else {
                 div.className = 'personal-task';
+                
+                // Format Date for Display
+                let dateDisplay = "Add Date";
+                let dateClass = "";
+                
+                if (task.due_date) {
+                    const today = new Date(); today.setHours(0,0,0,0);
+                    const due = new Date(task.due_date); due.setHours(0,0,0,0);
+                    const diff = (due - today) / (1000 * 60 * 60 * 24);
+                    
+                    if (diff < 0) { dateDisplay = `Overdue ${task.due_date}`; dateClass = "overdue"; }
+                    else if (diff === 0) { dateDisplay = "Today"; dateClass = "today"; }
+                    else if (diff === 1) { dateDisplay = "Tomorrow"; }
+                    else { 
+                        // Show "Mon 23 Oct"
+                        dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); 
+                    }
+                }
+
                 div.innerHTML = `
-                    <span style="color:#ccc; cursor:grab; margin-right:10px;">☰</span>
-                    <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">
-                    <span style="flex:1; margin-left:10px; cursor:pointer; ${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}" onclick="openTaskModalId(${task.id})">${task.title}</span>
+                    <div style="padding-top:2px;">
+                        <span style="color:#ccc; cursor:grab; margin-right:8px;">☰</span>
+                        <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">
+                    </div>
+                    <div class="personal-task-content">
+                        <span class="personal-task-title ${task.status === 'Done' ? 'done-text' : ''}" 
+                              style="${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}" 
+                              onclick="openTaskModalId(${task.id})">
+                              ${task.title}
+                        </span>
+                        <span class="personal-date-badge ${dateClass}" onclick="openDateMenu(event, ${task.id})">
+                           ${task.due_date ? '📅 ' + dateDisplay : '➕ Add Date'}
+                        </span>
+                    </div>
                 `;
             }
             
             div.draggable = true;
             div.dataset.id = task.id;
             addPersonalDragEvents(div);
-            
             personalList.appendChild(div);
         } 
         // --- WORK KANBAN ---
-        else if (columns['Todo']) { // Only render if Kanban DOM exists
+        else if (columns['Todo']) { 
             const statusKey = task.status || 'Todo';
             if (columns[statusKey]) {
                 counts[statusKey]++; 
@@ -163,7 +173,6 @@ function renderTasks() {
                     const today = new Date().setHours(0,0,0,0);
                     const due = new Date(task.due_date).setHours(0,0,0,0);
                     const diffDays = (due - today) / (1000 * 60 * 60 * 24);
-
                     if (diffDays < 0) { colorClass = 'urgent-overdue'; dateBadge = 'Overdue!'; }
                     else if (diffDays === 0) { colorClass = 'urgent-today'; dateBadge = 'Due Today'; }
                     else if (diffDays <= 3) { colorClass = 'urgent-soon'; dateBadge = 'Due Soon'; }
@@ -174,16 +183,13 @@ function renderTasks() {
                 card.draggable = true;
                 card.dataset.id = task.id;
                 card.dataset.status = statusKey;
-                
                 card.innerHTML = `
                     <div style="font-weight:600;">${task.title}</div>
                     ${dateBadge ? `<span class="task-date-badge">${dateBadge}</span>` : ''}
                     ${task.due_date ? `<div class="task-meta">Due: ${task.due_date}</div>` : ''}
                 `;
-
                 card.onclick = () => openTaskModal(task); 
                 addTaskDragEvents(card); 
-
                 columns[statusKey].appendChild(card);
             }
         }
@@ -197,32 +203,103 @@ function renderTasks() {
     }
 }
 
-// --- PERSONAL DRAG & DROP (Insert Logic) ---
+/* --- DATE PICKER LOGIC (Apple Style) --- */
+let activeDateTaskId = null;
+
+function openDateMenu(e, taskId) {
+    e.stopPropagation();
+    activeDateTaskId = taskId;
+    const menu = document.getElementById('date-context-menu');
+    
+    // Position menu near the click
+    const rect = e.target.getBoundingClientRect();
+    menu.style.left = rect.left + 'px';
+    menu.style.top = (rect.bottom + 5) + 'px';
+    menu.style.display = 'block';
+}
+
+async function applyDatePreset(preset) {
+    const menu = document.getElementById('date-context-menu');
+    menu.style.display = 'none';
+    
+    if (!activeDateTaskId) return;
+    
+    let newDate = "";
+    const today = new Date();
+
+    if (preset === 'today') {
+        newDate = today.toISOString().split('T')[0];
+    } else if (preset === 'tomorrow') {
+        today.setDate(today.getDate() + 1);
+        newDate = today.toISOString().split('T')[0];
+    } else if (preset === 'next-week') {
+        // Calculate next Monday
+        today.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
+        newDate = today.toISOString().split('T')[0];
+    } else if (preset === 'clear') {
+        newDate = null;
+    } else if (preset === 'custom') {
+        const picker = document.getElementById('hidden-date-picker');
+        picker.showPicker ? picker.showPicker() : picker.click(); // Trigger native calendar
+        return; // Wait for onchange event
+    }
+
+    await saveTaskDate(activeDateTaskId, newDate);
+}
+
+// Called by the hidden input
+async function applyCustomDate(dateStr) {
+    if (!activeDateTaskId) return;
+    await saveTaskDate(activeDateTaskId, dateStr);
+    // Reset picker
+    document.getElementById('hidden-date-picker').value = '';
+}
+
+async function saveTaskDate(id, dateStr) {
+    // Optimistic Update
+    const task = allTasks.find(t => t.id === id);
+    if (task) task.due_date = dateStr;
+    renderTasks();
+    
+    // We reuse the /add endpoint which handles updates
+    // But we need to preserve other fields. 
+    // Since /add expects all fields or nulls, simpler to use the dedicated ID update
+    // But wait, our API /add is an upsert. We just need to ensure we don't wipe data.
+    // Actually, let's just use the current task object to fill gaps
+    
+    await fetch('/api/tasks/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+            id: task.id,
+            title: task.title,
+            type: task.type,
+            status: task.status,
+            description: task.description,
+            start_date: task.start_date,
+            due_date: dateStr, // Update this
+            review_date: task.review_date
+        })
+    });
+}
+
+
+// --- DRAG & DROP LOGIC (PERSONAL & WORK) ---
 let personalDraggedId = null;
 
 function addPersonalDragEvents(row) {
     row.addEventListener('dragstart', function(e) {
         personalDraggedId = this.dataset.id;
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', this.dataset.id); // For Firefox compatibility
         setTimeout(() => this.classList.add('dragging'), 0);
     });
     
     row.addEventListener('dragover', function(e) { 
         e.preventDefault(); 
-        
-        // Add visual cue (Line above or below)
         const rect = this.getBoundingClientRect();
         const midpoint = rect.top + rect.height / 2;
-        
-        this.style.borderTop = '';
-        this.style.borderBottom = '';
-        
-        if (e.clientY < midpoint) {
-            this.style.borderTop = '2px solid var(--accent)';
-        } else {
-            this.style.borderBottom = '2px solid var(--accent)';
-        }
+        this.style.borderTop = e.clientY < midpoint ? '2px solid var(--accent)' : '';
+        this.style.borderBottom = e.clientY >= midpoint ? '2px solid var(--accent)' : '';
     });
     
     row.addEventListener('dragleave', function() {
@@ -234,76 +311,43 @@ function addPersonalDragEvents(row) {
         e.preventDefault();
         this.style.borderTop = '';
         this.style.borderBottom = '';
-        
-        // Find the actual dragged row (DOM element)
-        const draggedRow = document.querySelector(`.personal-header[data-id="${personalDraggedId}"], .personal-task[data-id="${personalDraggedId}"]`);
-        if (draggedRow) draggedRow.classList.remove('dragging');
+        this.classList.remove('dragging');
 
         const targetId = this.dataset.id;
         if (!personalDraggedId || !targetId || personalDraggedId === targetId) return;
 
-        // 1. Calculate Index positions
-        // We need the list exactly as it is CURRENTLY rendered on screen to know neighbors
-        const allRows = Array.from(document.querySelectorAll('#personal-task-list > div'));
-        const draggedIndex = allRows.findIndex(el => el.dataset.id == personalDraggedId);
-        const targetIndex = allRows.findIndex(el => el.dataset.id == targetId);
-
-        if (draggedIndex === -1 || targetIndex === -1) return;
-
-        // 2. Determine if dropping Above or Below target
+        // Calculate Position
         const rect = this.getBoundingClientRect();
         const midpoint = rect.top + rect.height / 2;
         const dropAfter = e.clientY > midpoint;
-
-        // 3. Find the Neighbor orders
-        // We want to squeeze between Target and its Neighbor
-        let itemAbove, itemBelow;
         
-        const targetItem = allTasks.find(t => t.id == targetId);
-
+        const sorted = allTasks.filter(t => t.type === 'Personal');
+        const targetIdx = sorted.findIndex(t => t.id == targetId);
+        
+        let itemAbove, itemBelow;
         if (dropAfter) {
-            // Dropping BELOW target
-            // Order should be between Target and Target+1
-            itemAbove = targetItem;
-            // Find item visually after the target (excluding the dragged item itself logic is tricky, 
-            // simpler to just look at the array orders)
-            // Let's rely on sorted allTasks array for math
-            const sorted = allTasks.filter(t => t.type === 'Personal'); // Get only personal tasks
-            // We need the index of target in the DATA array
-            const tDataIdx = sorted.findIndex(t => t.id == targetId);
-            itemBelow = sorted[tDataIdx + 1]; // Item currently below target
+            itemAbove = sorted[targetIdx];
+            itemBelow = sorted[targetIdx + 1];
         } else {
-            // Dropping ABOVE target
-            itemAbove = null; // We need to check previous item
-            const sorted = allTasks.filter(t => t.type === 'Personal');
-            const tDataIdx = sorted.findIndex(t => t.id == targetId);
-            if(tDataIdx > 0) itemAbove = sorted[tDataIdx - 1];
-            itemBelow = targetItem;
+            itemAbove = sorted[targetIdx - 1];
+            itemBelow = sorted[targetIdx];
         }
-
-        // 4. Calculate Magic Number
+        
         let newOrder;
-        const orderBelow = itemBelow ? (itemBelow.position_order || 0) : null;
-        const orderAbove = itemAbove ? (itemAbove.position_order || 0) : null;
+        const orderA = itemAbove ? (itemAbove.position_order || 0) : null;
+        const orderB = itemBelow ? (itemBelow.position_order || 0) : null;
 
-        if (itemAbove && itemBelow) {
-            newOrder = (orderAbove + orderBelow) / 2;
-        } else if (itemAbove) {
-            newOrder = orderAbove + 10000; // End of list
-        } else if (itemBelow) {
-            newOrder = orderBelow - 10000; // Top of list
-        } else {
-            newOrder = Date.now(); // First item ever
-        }
+        if (orderA !== null && orderB !== null) newOrder = (orderA + orderB) / 2;
+        else if (orderA !== null) newOrder = orderA + 10000;
+        else if (orderB !== null) newOrder = orderB - 10000;
+        else newOrder = Date.now();
 
-        // 5. Apply & Render
         const draggedItem = allTasks.find(t => t.id == personalDraggedId);
         draggedItem.position_order = newOrder;
         
         allTasks.sort((a,b) => a.position_order - b.position_order);
         renderTasks();
 
-        // 6. Save
         await fetch('/api/tasks/update_order', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -318,7 +362,6 @@ function addPersonalDragEvents(row) {
     });
 }
 
-// --- WORK KANBAN DRAG & DROP ---
 let taskDraggedId = null;
 function addTaskDragEvents(card) {
     card.addEventListener('dragstart', function(e) {
@@ -374,7 +417,7 @@ document.querySelectorAll('.task-container').forEach(container => {
     });
 });
 
-// --- TASK MODAL LOGIC ---
+// --- MODALS ---
 function openAddTaskModal() { openTaskModal(null); }
 function openTaskModalId(id) {
     const task = allTasks.find(t => t.id === id);
@@ -384,6 +427,15 @@ function openTaskModalId(id) {
 function openTaskModal(task) {
     const modal = document.getElementById('task-modal');
     if(!modal) return;
+    
+    // Helper to toggle Status field visibility based on Type
+    const toggleStatusField = (type) => {
+        const statusSelect = document.getElementById('task-status-select');
+        const statusContainer = statusSelect ? statusSelect.closest('div') : null;
+        if(statusContainer) {
+            statusContainer.style.visibility = (type === 'Personal') ? 'hidden' : 'visible';
+        }
+    };
 
     if (task) {
         document.getElementById('task-modal-title').innerText = "Edit Task";
@@ -396,22 +448,31 @@ function openTaskModal(task) {
         document.getElementById('task-due').value = task.due_date || '';
         document.getElementById('task-review').value = task.review_date || '';
         
+        toggleStatusField(task.type);
+        
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'block';
     } else {
         document.getElementById('task-modal-title').innerText = "New Task";
         document.getElementById('task-id').value = '';
         document.getElementById('task-title').value = '';
-        document.getElementById('task-type').value = 'Work';
+        const defaultType = 'Work';
+        document.getElementById('task-type').value = defaultType;
         document.getElementById('task-status-select').value = 'Todo';
         document.getElementById('task-desc').value = '';
         document.getElementById('task-start').value = '';
         document.getElementById('task-due').value = '';
         document.getElementById('task-review').value = '';
         
+        toggleStatusField(defaultType);
+        
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'none';
     }
+    
+    // Add listener to Type change to toggle Status live
+    document.getElementById('task-type').onchange = (e) => toggleStatusField(e.target.value);
+    
     modal.style.display = 'block';
 }
 
@@ -448,13 +509,11 @@ async function deleteTask() {
     const id = document.getElementById('task-id').value;
     if(!id) return;
     if(!confirm("Delete this task?")) return;
-
     await fetch('/api/tasks/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
     });
-    
     document.getElementById('task-modal').style.display = 'none';
     fetchTasks();
 }
@@ -462,15 +521,10 @@ async function deleteTask() {
 async function addPersonalSection() {
     const name = prompt("Enter section name (e.g. 'Morning', 'Errands'):");
     if(!name) return;
-    
     await fetch('/api/tasks/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            title: name, 
-            type: 'Personal',
-            is_header: 1 
-        })
+        body: JSON.stringify({ title: name, type: 'Personal', is_header: 1 })
     });
     fetchTasks();
 }
@@ -515,7 +569,6 @@ function switchDailyTab(tab) {
 
 /* --- GOALS LOGIC --- */
 let allGoals = [];
-
 async function fetchGoals() {
     try {
         const res = await fetch('/api/goals');
@@ -525,7 +578,6 @@ async function fetchGoals() {
         renderGoals('Habit', 'habit-goals-container');
     } catch (err) { console.error("Error loading goals", err); }
 }
-
 function renderGoals(type, containerId) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -535,7 +587,6 @@ function renderGoals(type, containerId) {
         const percent = Math.min(100, Math.round((goal.current_amount / goal.target_amount) * 100));
         const bgImage = goal.image_url ? `url('${goal.image_url}')` : 'none';
         const bgColor = goal.image_url ? 'transparent' : '#e0e0e0';
-
         const html = `
             <div class="goal-card">
                 <div class="goal-image" style="background-image: ${bgImage}; background-color: ${bgColor}"></div>
@@ -553,7 +604,6 @@ function renderGoals(type, containerId) {
         container.insertAdjacentHTML('beforeend', html);
     });
 }
-
 function openGoalModal(type) {
     document.getElementById('goal-id').value = '';
     document.getElementById('goal-type').value = type;
@@ -565,7 +615,6 @@ function openGoalModal(type) {
     document.getElementById('goal-notes-input').value = '';
     document.getElementById('goal-modal').style.display = 'block';
 }
-
 function editGoal(id) {
     const goal = allGoals.find(g => g.id === id);
     if (!goal) return;
@@ -579,7 +628,6 @@ function editGoal(id) {
     document.getElementById('goal-notes-input').value = goal.notes || '';
     document.getElementById('goal-modal').style.display = 'block';
 }
-
 async function saveGoal() {
     const id = document.getElementById('goal-id').value;
     const type = document.getElementById('goal-type').value;
@@ -588,9 +636,7 @@ async function saveGoal() {
     const current = parseInt(document.getElementById('goal-current-input').value) || 0;
     const target = parseInt(document.getElementById('goal-target-input').value) || 1;
     const notes = document.getElementById('goal-notes-input').value;
-
     if (!title) return alert("Title is required");
-
     const payload = { title, type, image_url, current_amount: current, target_amount: target, notes };
     let url = '/api/goals/add';
     if (id) {
@@ -605,18 +651,15 @@ async function saveGoal() {
     document.getElementById('goal-modal').style.display = 'none';
     fetchGoals();
 }
-
 async function quickUpdateGoal(id, change) {
     const goal = allGoals.find(g => g.id === id);
     if(!goal) return;
     const newAmount = Math.max(0, goal.current_amount + change);
     goal.current_amount = newAmount;
-
     let containerId = 'monthly-goals-container';
     if (goal.type === 'Yearly') containerId = 'yearly-goals-container';
     if (goal.type === 'Habit') containerId = 'habit-goals-container';
     renderGoals(goal.type, containerId); 
-
     await fetch('/api/goals/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -626,38 +669,31 @@ async function quickUpdateGoal(id, change) {
 
 /* --- BUDGET LOGIC --- */
 let allBudgetItems = [];
-
 async function fetchBudget() {
     try {
         const res = await fetch('/api/budget_items');
         allBudgetItems = await res.json();
         allBudgetItems.forEach(i => { if(!i.position_order) i.position_order = i.id; });
         allBudgetItems.sort((a,b) => (a.position_order - b.position_order));
-
         renderBudget();
         checkPaydayReset();
     } catch (err) { console.error(err); }
 }
-
 function renderBudget() {
     const categories = ['Barclays', 'Monzo', 'Payback'];
-    
     categories.forEach(cat => {
         const list = document.getElementById(`list-${cat.toLowerCase()}`);
         const totalSpan = document.getElementById(`total-${cat.toLowerCase()}`);
         if(!list) return;
-
         list.innerHTML = '';
         const items = allBudgetItems.filter(i => i.category === cat);
         let categoryRemaining = 0;
-
         items.forEach(item => {
             const tr = document.createElement('tr');
             tr.draggable = true;
             tr.dataset.id = item.id;
             tr.dataset.cat = cat;
             addBudgetDragEvents(tr);
-
             if (item.type === 'header') {
                 tr.className = 'budget-header-row';
                 tr.innerHTML = `
@@ -668,11 +704,9 @@ function renderBudget() {
                 list.appendChild(tr);
                 return;
             }
-
             const isPaid = item.is_paid_this_month === 1;
             let displayMonthly = item.monthly_cost;
             let monthsDisplay = "-";
-
             if (cat === 'Payback') {
                 if (item.final_payment_date) {
                     const now = new Date();
@@ -687,10 +721,8 @@ function renderBudget() {
             } else {
                 if (!isPaid) categoryRemaining += item.monthly_cost;
             }
-
             tr.className = isPaid ? 'paid-row' : '';
             const nameCell = `<span class="editable-cell" onclick="editBudgetItem(${item.id})">${item.name}</span>`;
-
             if (cat === 'Payback') {
                 const currentDebtDisplay = isPaid ? (item.total_cost - displayMonthly) : item.total_cost;
                 tr.innerHTML = `
@@ -713,20 +745,16 @@ function renderBudget() {
             }
             list.appendChild(tr);
         });
-
         if(totalSpan) totalSpan.innerText = categoryRemaining.toFixed(2);
     });
 }
-
 async function checkPaydayReset() {
     const lastCheck = localStorage.getItem('last_budget_check_month');
     const currentMonth = new Date().toISOString().slice(0, 7); 
-
     if (!lastCheck) {
         localStorage.setItem('last_budget_check_month', currentMonth);
         return;
     }
-
     if (lastCheck !== currentMonth) {
         console.log("New month detected! Resetting budget...");
         await fetch('/api/budget_items/reset', { method: 'POST' });
@@ -735,50 +763,38 @@ async function checkPaydayReset() {
         alert("Welcome to a new month! \n\n• Paybacks have been updated.\n• Checkboxes have been reset.");
     }
 }
-
 function openBudgetModal(category, mode = 'bill') {
     document.getElementById('budget-id').value = ''; 
     document.getElementById('budget-type').value = mode; 
     document.getElementById('budget-category').value = category;
     document.getElementById('budget-modal-title').innerText = mode === 'header' ? `Add Header to ${category}` : `Add Bill to ${category}`;
-    
     document.getElementById('budget-name').value = '';
     document.getElementById('budget-monthly').value = '';
     document.getElementById('budget-total').value = '';
     document.getElementById('budget-date').value = '';
-    
     const costFields = document.getElementById('cost-fields');
     if(costFields) costFields.style.display = mode === 'header' ? 'none' : 'block';
-
     const paybackFields = document.getElementById('payback-fields');
     if(paybackFields) paybackFields.style.display = (category === 'Payback' && mode !== 'header') ? 'block' : 'none';
-    
     document.getElementById('budget-modal').style.display = 'block';
 }
-
 function editBudgetItem(id) {
     const item = allBudgetItems.find(i => i.id === id);
     if (!item) return;
-
     document.getElementById('budget-id').value = item.id;
     document.getElementById('budget-type').value = item.type;
     document.getElementById('budget-category').value = item.category;
     document.getElementById('budget-modal-title').innerText = `Edit ${item.name}`;
-    
     document.getElementById('budget-name').value = item.name;
     document.getElementById('budget-monthly').value = item.monthly_cost;
     document.getElementById('budget-total').value = item.total_cost;
     document.getElementById('budget-date').value = item.final_payment_date || '';
-
     const costFields = document.getElementById('cost-fields');
     if(costFields) costFields.style.display = item.type === 'header' ? 'none' : 'block';
-
     const paybackFields = document.getElementById('payback-fields');
     if(paybackFields) paybackFields.style.display = (item.category === 'Payback' && item.type !== 'header') ? 'block' : 'none';
-
     document.getElementById('budget-modal').style.display = 'block';
 }
-
 async function saveBudgetItem() {
     const id = document.getElementById('budget-id').value;
     const type = document.getElementById('budget-type').value;
@@ -787,9 +803,7 @@ async function saveBudgetItem() {
     const monthly = parseFloat(document.getElementById('budget-monthly').value) || 0;
     const total = parseFloat(document.getElementById('budget-total').value) || 0;
     const finalDate = document.getElementById('budget-date').value;
-
     if(!name) return;
-
     await fetch('/api/budget_items/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -800,11 +814,9 @@ async function saveBudgetItem() {
             final_payment_date: finalDate 
         })
     });
-
     document.getElementById('budget-modal').style.display = 'none';
     fetchBudget();
 }
-
 async function toggleBudgetPaid(id, isPaid) {
     const item = allBudgetItems.find(i => i.id === id);
     if(item) item.is_paid_this_month = isPaid ? 1 : 0;
@@ -815,7 +827,6 @@ async function toggleBudgetPaid(id, isPaid) {
         body: JSON.stringify({ id, is_paid: isPaid })
     });
 }
-
 async function deleteBudgetItem(id) {
     if(!confirm("Delete this bill?")) return;
     await fetch('/api/budget_items/delete', {
@@ -825,7 +836,6 @@ async function deleteBudgetItem(id) {
     });
     fetchBudget();
 }
-
 let budgetDraggedId = null;
 function addBudgetDragEvents(row) {
     row.addEventListener('dragstart', function(e) {
@@ -837,10 +847,8 @@ function addBudgetDragEvents(row) {
     row.addEventListener('drop', async function(e) {
         e.preventDefault(); e.stopPropagation();
         this.style.opacity = '1';
-        
         const targetId = this.dataset.id;
         const draggedRow = document.querySelector(`tr[data-id="${budgetDraggedId}"]`);
-        
         if (budgetDraggedId && targetId && budgetDraggedId !== targetId && draggedRow && this.dataset.cat === draggedRow.dataset.cat) {
             const itemA = allBudgetItems.find(i => i.id == budgetDraggedId);
             const itemB = allBudgetItems.find(i => i.id == targetId);
@@ -863,12 +871,10 @@ function addBudgetDragEvents(row) {
 let allVisionItems = [];
 let allCategories = [];
 let currentVisionFilter = 'All';
-
 async function initVisionBoard() {
     await fetchCategories();
     await fetchVision();
 }
-
 async function fetchCategories() {
     try {
         const res = await fetch('/api/categories');
@@ -876,12 +882,10 @@ async function fetchCategories() {
         renderCategories();
     } catch(err) { console.error(err); }
 }
-
 function renderCategories() {
     const container = document.querySelector('.vision-filter');
     if(!container) return;
     container.innerHTML = `<button class="filter-btn ${currentVisionFilter === 'All' ? 'active' : ''}" onclick="filterVision('All')">All</button>`;
-    
     allCategories.forEach(cat => {
         const btn = document.createElement('button');
         btn.className = `filter-btn ${currentVisionFilter === cat.name ? 'active' : ''}`;
@@ -891,13 +895,11 @@ function renderCategories() {
         btn.ondblclick = () => deleteCategory(cat.id, cat.name);
         container.appendChild(btn);
     });
-    
     const addBtn = document.createElement('button');
     addBtn.className = 'add-cat-btn';
     addBtn.innerText = '+ New';
     addBtn.onclick = addNewCategory;
     container.appendChild(addBtn);
-
     const select = document.getElementById('vision-section');
     if(select) {
         select.innerHTML = '';
@@ -909,7 +911,6 @@ function renderCategories() {
         });
     }
 }
-
 async function addNewCategory() {
     const name = prompt("Enter new category name:");
     if (!name) return;
@@ -920,7 +921,6 @@ async function addNewCategory() {
     });
     fetchCategories();
 }
-
 async function deleteCategory(id, name) {
     if(!confirm(`Delete category "${name}"?`)) return;
     await fetch('/api/categories/delete', {
@@ -931,7 +931,6 @@ async function deleteCategory(id, name) {
     if(currentVisionFilter === name) currentVisionFilter = 'All';
     fetchCategories();
 }
-
 async function fetchVision() {
     try {
         const res = await fetch('/api/vision_board');
@@ -941,24 +940,20 @@ async function fetchVision() {
         renderVision();
     } catch (err) { console.error(err); }
 }
-
 function renderVision() {
     const grid = document.getElementById('vision-grid');
     if (!grid) return;
     grid.innerHTML = '';
     const items = currentVisionFilter === 'All' ? allVisionItems : allVisionItems.filter(i => i.section === currentVisionFilter);
-
     items.forEach(item => {
         const card = document.createElement('div');
         card.className = 'vision-card';
         card.draggable = true; 
         card.dataset.id = item.id; 
-
         card.addEventListener('dragstart', handleDragStart);
         card.addEventListener('dragover', handleDragOver);
         card.addEventListener('drop', handleDrop);
         card.addEventListener('dragenter', (e) => e.preventDefault());
-
         card.innerHTML = `
             <div class="vision-delete" onclick="deleteVisionItem(${item.id})">×</div>
             <img src="${item.image_url}" class="vision-img" onerror="this.src='https://via.placeholder.com/200?text=Err'">
@@ -972,13 +967,11 @@ function renderVision() {
         grid.appendChild(card);
     });
 }
-
 function filterVision(category) {
     currentVisionFilter = category;
     renderCategories();
     renderVision();
 }
-
 async function updateVisionTitle(id, newTitle) {
     const item = allVisionItems.find(i => i.id === id);
     if(item && item.title === newTitle) return;
@@ -988,7 +981,6 @@ async function updateVisionTitle(id, newTitle) {
         body: JSON.stringify({ id, title: newTitle, image_url: item.image_url })
     });
 }
-
 let draggedId = null;
 function handleDragStart(e) { draggedId = this.dataset.id; this.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; }
 function handleDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; this.classList.add('drag-over'); }
@@ -998,7 +990,6 @@ function handleDrop(e) {
     const targetId = this.dataset.id;
     if (draggedId && targetId && draggedId !== targetId) swapItems(draggedId, targetId);
 }
-
 async function swapItems(idA, idB) {
     const idxA = allVisionItems.findIndex(i => i.id == idA);
     const idxB = allVisionItems.findIndex(i => i.id == idB);
@@ -1013,19 +1004,16 @@ async function swapItems(idA, idB) {
         body: JSON.stringify({ id: idA, swap_with_id: idB })
     });
 }
-
 function openVisionModal() {
     document.getElementById('vision-title').value = '';
     document.getElementById('vision-url').value = '';
     document.getElementById('vision-modal').style.display = 'block';
 }
-
 async function saveVisionItem() {
     const title = document.getElementById('vision-title').value;
     const url = document.getElementById('vision-url').value;
     const section = document.getElementById('vision-section').value;
     if (!title || !url) return alert("Please enter a title and image URL");
-    
     await fetch('/api/vision_board/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1034,7 +1022,6 @@ async function saveVisionItem() {
     document.getElementById('vision-modal').style.display = 'none';
     fetchVision(); 
 }
-
 async function deleteVisionItem(id) {
     if(!confirm("Remove this vision?")) return;
     allVisionItems = allVisionItems.filter(i => i.id !== id);
@@ -1045,7 +1032,6 @@ async function deleteVisionItem(id) {
         body: JSON.stringify({ id })
     });
 }
-
 /* --- INIT --- */
 document.addEventListener('DOMContentLoaded', () => {
     setupNavigation();
