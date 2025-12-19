@@ -204,17 +204,18 @@ function renderTasks() {
 
 /* --- DATE PICKER LOGIC (Apple Style) --- */
 let activeDateTaskId = null; 
-let isModalDateMode = false;
+let activeModalField = null; // 'modal-due', 'modal-start', 'modal-review', or null
 
-function openDateMenu(e, taskId) {
+function openDateMenu(e, source) {
     e.stopPropagation();
     
-    if (taskId === 'modal') {
-        isModalDateMode = true;
+    // Check if source is a modal field identifier
+    if (['modal-due', 'modal-start', 'modal-review'].includes(source)) {
+        activeModalField = source;
         activeDateTaskId = null;
     } else {
-        isModalDateMode = false;
-        activeDateTaskId = taskId;
+        activeModalField = null;
+        activeDateTaskId = source; // ID from the task list
     }
 
     const menu = document.getElementById('date-context-menu');
@@ -250,26 +251,33 @@ async function applyDatePreset(preset) {
     }
 
     // Apply the date
-    if (isModalDateMode) {
-        updateModalDateUI(newDate);
+    if (activeModalField) {
+        updateModalDateUI(newDate, activeModalField);
     } else if (activeDateTaskId) {
         await saveTaskDate(activeDateTaskId, newDate || null);
     }
 }
 
 async function applyCustomDate(dateStr) {
-    if (isModalDateMode) {
-        updateModalDateUI(dateStr);
+    if (activeModalField) {
+        updateModalDateUI(dateStr, activeModalField);
     } else if (activeDateTaskId) {
         await saveTaskDate(activeDateTaskId, dateStr);
     }
     document.getElementById('hidden-date-picker').value = '';
 }
 
-function updateModalDateUI(dateStr) {
-    document.getElementById('task-due').value = dateStr || '';
+function updateModalDateUI(dateStr, fieldType) {
+    // Map field type to DOM IDs
+    let inputId, textId;
+    if (fieldType === 'modal-due') { inputId = 'task-due'; textId = 'modal-due-text'; }
+    else if (fieldType === 'modal-start') { inputId = 'task-start'; textId = 'modal-start-text'; }
+    else if (fieldType === 'modal-review') { inputId = 'task-review'; textId = 'modal-review-text'; }
+    else return;
+
+    document.getElementById(inputId).value = dateStr || '';
     
-    const display = document.getElementById('modal-due-text');
+    const display = document.getElementById(textId);
     if (!dateStr) {
         display.innerText = "Add Date";
         display.style.color = "#333";
@@ -463,10 +471,12 @@ function openTaskModal(task) {
         document.getElementById('task-type').value = task.type || 'Work';
         document.getElementById('task-status-select').value = task.status || 'Todo';
         document.getElementById('task-desc').value = task.description || '';
-        document.getElementById('task-start').value = task.start_date || '';
-        document.getElementById('task-review').value = task.review_date || '';
         
-        updateModalDateUI(task.due_date);
+        // Initialize Dates using the specific field identifiers
+        updateModalDateUI(task.due_date, 'modal-due');
+        updateModalDateUI(task.start_date, 'modal-start');
+        updateModalDateUI(task.review_date, 'modal-review');
+        
         updateFormLayout(task.type);
         
         const delBtn = document.querySelector('.delete-btn');
@@ -479,10 +489,11 @@ function openTaskModal(task) {
         document.getElementById('task-type').value = defaultType;
         document.getElementById('task-status-select').value = 'Todo';
         document.getElementById('task-desc').value = '';
-        document.getElementById('task-start').value = '';
-        document.getElementById('task-review').value = '';
         
-        updateModalDateUI("");
+        updateModalDateUI("", 'modal-due');
+        updateModalDateUI("", 'modal-start');
+        updateModalDateUI("", 'modal-review');
+        
         updateFormLayout(defaultType);
         
         const delBtn = document.querySelector('.delete-btn');
