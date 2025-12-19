@@ -384,13 +384,75 @@ column-count: 4;
 
 /* --- PERSONAL LIST STYLES --- */
 .personal-task {
-    display: flex; align-items: center; gap: 10px;
-    padding: 1rem; background: white; border-bottom: 1px solid #eee;
+    display: flex; 
+    align-items: flex-start; /* Align to top so checkbox stays up */
+    gap: 12px;
+    padding: 12px 1rem; 
+    background: white; 
+    border-bottom: 1px solid #eee;
     transition: background 0.2s;
-    cursor: grab; /* Shows it is draggable */
+    cursor: default;
 }
-.personal-task:hover { background: #f9f9f9; }
+.personal-task:hover { background: #fafafa; }
 .personal-task.dragging { opacity: 0.5; background: #e3f2fd; }
+
+.personal-task-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.personal-task-title {
+    font-size: 1rem;
+    color: #333;
+    cursor: pointer;
+}
+
+.personal-date-badge {
+    font-size: 0.75rem;
+    color: #888;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    transition: color 0.2s;
+    width: fit-content;
+}
+.personal-date-badge:hover { color: var(--accent); }
+.personal-date-badge.overdue { color: #e74c3c; font-weight: 500; }
+.personal-date-badge.today { color: #2980b9; font-weight: 500; }
+
+/* --- CONTEXT MENU (Apple Style) --- */
+.context-menu {
+    position: absolute;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    border: 1px solid #eee;
+    width: 180px;
+    z-index: 5000;
+    overflow: hidden;
+    animation: fadeIn 0.1s ease-out;
+}
+
+.menu-option {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+    color: #333;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.menu-option:hover { background: #f5f5f7; }
+.menu-option span { pointer-events: none; }
+.menu-divider { height: 1px; background: #eee; margin: 4px 0; }
+.menu-option.danger { color: #e74c3c; }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
 
 .personal-header {
     background: #f1f3f5;
