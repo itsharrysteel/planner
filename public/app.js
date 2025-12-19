@@ -20,7 +20,7 @@ function setupNavigation() {
     // Close context menu when clicking elsewhere
     document.addEventListener('click', (e) => {
         const menu = document.getElementById('date-context-menu');
-        if (menu && menu.style.display === 'block' && !e.target.closest('.personal-date-badge') && !e.target.closest('.context-menu')) {
+        if (menu && menu.style.display === 'block' && !e.target.closest('.personal-date-badge') && !e.target.closest('.date-input-fake') && !e.target.closest('.context-menu')) {
             menu.style.display = 'none';
         }
     });
@@ -132,7 +132,6 @@ function renderTasks() {
                     else if (diff === 0) { dateDisplay = "Today"; dateClass = "today"; }
                     else if (diff === 1) { dateDisplay = "Tomorrow"; }
                     else { 
-                        // Show "Mon 23 Oct"
                         dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); 
                     }
                 }
@@ -204,15 +203,24 @@ function renderTasks() {
 }
 
 /* --- DATE PICKER LOGIC (Apple Style) --- */
-let activeDateTaskId = null;
+let activeDateTaskId = null; 
+let isModalDateMode = false;
 
 function openDateMenu(e, taskId) {
     e.stopPropagation();
-    activeDateTaskId = taskId;
-    const menu = document.getElementById('date-context-menu');
     
-    // Position menu near the click
+    if (taskId === 'modal') {
+        isModalDateMode = true;
+        activeDateTaskId = null;
+    } else {
+        isModalDateMode = false;
+        activeDateTaskId = taskId;
+    }
+
+    const menu = document.getElementById('date-context-menu');
     const rect = e.target.getBoundingClientRect();
+    
+    // Position menu
     menu.style.left = rect.left + 'px';
     menu.style.top = (rect.bottom + 5) + 'px';
     menu.style.display = 'block';
@@ -221,8 +229,6 @@ function openDateMenu(e, taskId) {
 async function applyDatePreset(preset) {
     const menu = document.getElementById('date-context-menu');
     menu.style.display = 'none';
-    
-    if (!activeDateTaskId) return;
     
     let newDate = "";
     const today = new Date();
@@ -233,39 +239,51 @@ async function applyDatePreset(preset) {
         today.setDate(today.getDate() + 1);
         newDate = today.toISOString().split('T')[0];
     } else if (preset === 'next-week') {
-        // Calculate next Monday
         today.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
         newDate = today.toISOString().split('T')[0];
     } else if (preset === 'clear') {
-        newDate = null;
+        newDate = "";
     } else if (preset === 'custom') {
         const picker = document.getElementById('hidden-date-picker');
-        picker.showPicker ? picker.showPicker() : picker.click(); // Trigger native calendar
-        return; // Wait for onchange event
+        picker.showPicker ? picker.showPicker() : picker.click(); 
+        return; 
     }
 
-    await saveTaskDate(activeDateTaskId, newDate);
+    // Apply the date
+    if (isModalDateMode) {
+        updateModalDateUI(newDate);
+    } else if (activeDateTaskId) {
+        await saveTaskDate(activeDateTaskId, newDate || null);
+    }
 }
 
-// Called by the hidden input
 async function applyCustomDate(dateStr) {
-    if (!activeDateTaskId) return;
-    await saveTaskDate(activeDateTaskId, dateStr);
-    // Reset picker
+    if (isModalDateMode) {
+        updateModalDateUI(dateStr);
+    } else if (activeDateTaskId) {
+        await saveTaskDate(activeDateTaskId, dateStr);
+    }
     document.getElementById('hidden-date-picker').value = '';
 }
 
+function updateModalDateUI(dateStr) {
+    document.getElementById('task-due').value = dateStr || '';
+    
+    const display = document.getElementById('modal-due-text');
+    if (!dateStr) {
+        display.innerText = "Add Date";
+        display.style.color = "#333";
+    } else {
+        const d = new Date(dateStr);
+        display.innerText = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
+        display.style.color = "var(--accent)";
+    }
+}
+
 async function saveTaskDate(id, dateStr) {
-    // Optimistic Update
     const task = allTasks.find(t => t.id === id);
     if (task) task.due_date = dateStr;
     renderTasks();
-    
-    // We reuse the /add endpoint which handles updates
-    // But we need to preserve other fields. 
-    // Since /add expects all fields or nulls, simpler to use the dedicated ID update
-    // But wait, our API /add is an upsert. We just need to ensure we don't wipe data.
-    // Actually, let's just use the current task object to fill gaps
     
     await fetch('/api/tasks/add', {
         method: 'POST',
@@ -277,14 +295,13 @@ async function saveTaskDate(id, dateStr) {
             status: task.status,
             description: task.description,
             start_date: task.start_date,
-            due_date: dateStr, // Update this
+            due_date: dateStr,
             review_date: task.review_date
         })
     });
 }
 
-
-// --- DRAG & DROP LOGIC (PERSONAL & WORK) ---
+// --- DRAG & DROP LOGIC ---
 let personalDraggedId = null;
 
 function addPersonalDragEvents(row) {
@@ -428,13 +445,15 @@ function openTaskModal(task) {
     const modal = document.getElementById('task-modal');
     if(!modal) return;
     
-    // Helper to toggle Status field visibility based on Type
-    const toggleStatusField = (type) => {
-        const statusSelect = document.getElementById('task-status-select');
-        const statusContainer = statusSelect ? statusSelect.closest('div') : null;
-        if(statusContainer) {
-            statusContainer.style.visibility = (type === 'Personal') ? 'hidden' : 'visible';
-        }
+    // Helper to toggle Fields
+    const updateFormLayout = (type) => {
+        const statusContainer = document.getElementById('status-container');
+        if(statusContainer) statusContainer.style.visibility = (type === 'Personal') ? 'hidden' : 'visible';
+        
+        const workDates = document.getElementById('work-dates-wrapper');
+        const reviewDate = document.getElementById('work-review-wrapper');
+        if(workDates) workDates.style.display = (type === 'Personal') ? 'none' : 'contents';
+        if(reviewDate) reviewDate.style.display = (type === 'Personal') ? 'none' : 'block';
     };
 
     if (task) {
@@ -445,10 +464,10 @@ function openTaskModal(task) {
         document.getElementById('task-status-select').value = task.status || 'Todo';
         document.getElementById('task-desc').value = task.description || '';
         document.getElementById('task-start').value = task.start_date || '';
-        document.getElementById('task-due').value = task.due_date || '';
         document.getElementById('task-review').value = task.review_date || '';
         
-        toggleStatusField(task.type);
+        updateModalDateUI(task.due_date);
+        updateFormLayout(task.type);
         
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'block';
@@ -461,18 +480,16 @@ function openTaskModal(task) {
         document.getElementById('task-status-select').value = 'Todo';
         document.getElementById('task-desc').value = '';
         document.getElementById('task-start').value = '';
-        document.getElementById('task-due').value = '';
         document.getElementById('task-review').value = '';
         
-        toggleStatusField(defaultType);
+        updateModalDateUI("");
+        updateFormLayout(defaultType);
         
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'none';
     }
     
-    // Add listener to Type change to toggle Status live
-    document.getElementById('task-type').onchange = (e) => toggleStatusField(e.target.value);
-    
+    document.getElementById('task-type').onchange = (e) => updateFormLayout(e.target.value);
     modal.style.display = 'block';
 }
 
@@ -482,9 +499,10 @@ async function saveTask() {
     const type = document.getElementById('task-type').value;
     const status = document.getElementById('task-status-select').value;
     const desc = document.getElementById('task-desc').value;
+    
     const start = document.getElementById('task-start').value;
-    const due = document.getElementById('task-due').value;
     const review = document.getElementById('task-review').value;
+    const due = document.getElementById('task-due').value;
 
     if (!title) return alert("Task title required");
 
