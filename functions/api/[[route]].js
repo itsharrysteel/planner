@@ -93,12 +93,6 @@ export async function onRequest(context) {
             ]);
             return Response.json({ success: true });
         } 
-    } 
-        else if (data.new_status) {
-            const info = await db.prepare('UPDATE tasks SET status = ?, position_order = ? WHERE id = ?')
-                .bind(data.new_status, Date.now(), data.id).run();
-            return Response.json(info);
-        }
     }
 
     if (resource === 'tasks' && path[2] === 'delete') {
