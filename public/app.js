@@ -17,6 +17,7 @@ function setupNavigation() {
         });
     });
 
+    // Close context menu when clicking elsewhere
     document.addEventListener('click', (e) => {
         const menu = document.getElementById('date-context-menu');
         if (menu && menu.style.display === 'block' && !e.target.closest('.personal-date-badge') && !e.target.closest('.date-input-fake') && !e.target.closest('.context-menu')) {
@@ -24,8 +25,11 @@ function setupNavigation() {
         }
     });
 
+    // GLOBAL SHORTCUTS: Escape to close all modals
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') closeAllModals();
+        if (e.key === 'Escape') {
+            closeAllModals();
+        }
     });
 }
 
@@ -117,8 +121,10 @@ function renderTasks() {
     const counts = { 'Todo': 0, 'In-Progress': 0, 'On-Hold': 0, 'Done': 0 };
 
     allTasks.forEach(task => {
+        // --- PERSONAL LIST ---
         if (task.type === 'Personal') {
             const div = document.createElement('div');
+            
             if (task.is_header) {
                 div.className = 'personal-header';
                 div.innerHTML = `
@@ -127,17 +133,24 @@ function renderTasks() {
                 `;
             } else {
                 div.className = 'personal-task';
+                
+                // Format Date for Display
                 let dateDisplay = "Add Date";
                 let dateClass = "";
+                
                 if (task.due_date) {
                     const today = new Date(); today.setHours(0,0,0,0);
                     const due = new Date(task.due_date); due.setHours(0,0,0,0);
                     const diff = (due - today) / (1000 * 60 * 60 * 24);
+                    
                     if (diff < 0) { dateDisplay = `Overdue ${task.due_date}`; dateClass = "overdue"; }
                     else if (diff === 0) { dateDisplay = "Today"; dateClass = "today"; }
                     else if (diff === 1) { dateDisplay = "Tomorrow"; }
-                    else { dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); }
+                    else { 
+                        dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); 
+                    }
                 }
+
                 div.innerHTML = `
                     <div style="padding-top:2px;">
                         <span style="color:#ccc; cursor:grab; margin-right:8px;">☰</span>
@@ -146,23 +159,30 @@ function renderTasks() {
                     <div class="personal-task-content">
                         <span class="personal-task-title ${task.status === 'Done' ? 'done-text' : ''}" 
                               style="${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}" 
-                              onclick="openTaskModalId(${task.id})">${task.title}</span>
+                              onclick="openTaskModalId(${task.id})">
+                              ${task.title}
+                        </span>
                         <span class="personal-date-badge ${dateClass}" onclick="openDateMenu(event, ${task.id})">
                            ${task.due_date ? '📅 ' + dateDisplay : '➕ Add Date'}
                         </span>
                     </div>
                 `;
             }
+            
             div.draggable = true;
             div.dataset.id = task.id;
             addPersonalDragEvents(div);
             personalList.appendChild(div);
-        } else if (columns['Todo']) { 
+        } 
+        // --- WORK KANBAN ---
+        else if (columns['Todo']) { 
             const statusKey = task.status || 'Todo';
             if (columns[statusKey]) {
                 counts[statusKey]++; 
+                
                 let colorClass = `status-${statusKey.toLowerCase().replace('-','')}`;
                 let dateBadge = '';
+                
                 if (task.due_date && statusKey !== 'Done') {
                     const today = new Date().setHours(0,0,0,0);
                     const due = new Date(task.due_date).setHours(0,0,0,0);
@@ -171,6 +191,8 @@ function renderTasks() {
                     else if (diffDays === 0) { colorClass = 'urgent-today'; dateBadge = 'Due Today'; }
                     else if (diffDays <= 3) { colorClass = 'urgent-soon'; dateBadge = 'Due Soon'; }
                 }
+
+                // Format Date: "Friday 19th Dec"
                 let formattedDue = "";
                 if (task.due_date) {
                     const d = new Date(task.due_date);
@@ -180,6 +202,7 @@ function renderTasks() {
                     const month = d.toLocaleDateString('en-GB', { month: 'short' });
                     formattedDue = `${weekday} ${day}${suffix} ${month}`;
                 }
+
                 const card = document.createElement('div');
                 card.className = `task-card ${colorClass}`;
                 card.draggable = true;
@@ -221,6 +244,9 @@ function checkDateIntent(text) {
     let targetDate = null;
     let phrase = "";
 
+    const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+    const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+
     // 1. "Today"
     if (/\b(today)\b/.test(lower)) {
         targetDate = new Date();
@@ -238,20 +264,53 @@ function checkDateIntent(text) {
         targetDate.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
         phrase = "next week";
     }
-    // 4. "On Monday", "On Tuesday" etc.
-    else {
-        const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-        const match = lower.match(/\b(on\s+(monday|tuesday|wednesday|thursday|friday|saturday|sunday))\b/);
-        if (match) {
-            const dayName = match[2];
-            const targetDay = days.indexOf(dayName);
-            const currentDay = today.getDay();
-            let daysUntil = (targetDay - currentDay + 7) % 7;
-            if (daysUntil === 0) daysUntil = 7; // Next occurrence
-            
+    // 4. Specific Date with Month (e.g. "15th July", "15 jan")
+    else if (lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\b/)) {
+        const match = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\b/);
+        const day = parseInt(match[1]);
+        const monthStr = match[2];
+        let monthIndex = months.indexOf(monthStr.substring(0,3));
+        
+        if (monthIndex > -1 && day >= 1 && day <= 31) {
             targetDate = new Date();
-            targetDate.setDate(today.getDate() + daysUntil);
-            phrase = match[1]; // e.g. "on monday"
+            targetDate.setMonth(monthIndex);
+            targetDate.setDate(day);
+            
+            // If date has passed this year, assume next year
+            if (targetDate < new Date(new Date().setHours(0,0,0,0))) {
+                targetDate.setFullYear(today.getFullYear() + 1);
+            }
+            phrase = match[0];
+        }
+    }
+    // 5. Specific Day Name (e.g. "Monday", "on Tuesday")
+    else if (lower.match(/\b(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/)) {
+        const match = lower.match(/\b(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
+        const dayName = match[1];
+        const targetDay = days.indexOf(dayName);
+        const currentDay = today.getDay();
+        
+        let daysUntil = (targetDay - currentDay + 7) % 7;
+        if (daysUntil === 0) daysUntil = 7; // Always next occurrence
+        
+        targetDate = new Date();
+        targetDate.setDate(today.getDate() + daysUntil);
+        phrase = match[0];
+    }
+    // 6. Simple Date (e.g. "15th", "22nd")
+    // Requires suffix to avoid matching simple numbers like "Buy 5 apples"
+    else if (lower.match(/\b(\d{1,2})(st|nd|rd|th)\b/)) {
+        const match = lower.match(/\b(\d{1,2})(st|nd|rd|th)\b/);
+        const day = parseInt(match[1]);
+        
+        if (day >= 1 && day <= 31) {
+            targetDate = new Date();
+            // If day is past in current month, move to next month
+            if (day < today.getDate()) {
+                targetDate.setMonth(today.getMonth() + 1);
+            }
+            targetDate.setDate(day);
+            phrase = match[0];
         }
     }
 
@@ -260,7 +319,7 @@ function checkDateIntent(text) {
         suggestedPhrase = phrase;
         
         // Format display date (e.g. "Fri 20th")
-        const display = targetDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric' });
+        const display = targetDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
         
         suggestionEl.innerHTML = `📅 Set <b>${display}</b>?`;
         suggestionEl.style.display = 'flex';
@@ -508,7 +567,6 @@ function openTaskModal(task, defaultType = 'Work') {
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'none';
         
-        // Clear Suggestions
         document.getElementById('date-suggestion').style.display = 'none';
         setTimeout(() => document.getElementById('task-title').focus(), 100);
     }
@@ -540,7 +598,16 @@ async function saveTask(isQuickMode = false) {
 
     if (isQuickMode && !id) {
         document.getElementById('task-title').value = '';
-        document.getElementById('date-suggestion').style.display = 'none'; // Clear suggestion
+        document.getElementById('date-suggestion').style.display = 'none'; 
+        
+        // RESET DATES SO THEY DON'T LINGER
+        document.getElementById('task-due').value = '';
+        document.getElementById('task-start').value = '';
+        document.getElementById('task-review').value = '';
+        updateModalDateUI("", 'modal-due');
+        updateModalDateUI("", 'modal-start');
+        updateModalDateUI("", 'modal-review');
+
         fetchTasks(); 
         document.getElementById('task-title').focus();
     } else {
@@ -580,10 +647,6 @@ async function updateTaskStatusSimple(id, newStatus) {
 
 /* --- GOALS, BUDGET, VISION CODE REMAINS SAME (OMITTED FOR BREVITY, KEEP YOUR EXISTING CODE FOR THOSE SECTIONS IF UNCHANGED) --- */
 // But since you asked for the FULL file, I will include the rest below to ensure nothing breaks.
-
-/* --- GOALS LOGIC --- */
-// ... (Goals, Budget, and Vision sections are identical to previous working versions. 
-// I'll paste them here to make the file complete)
 
 /* --- GOALS LOGIC --- */
 async function fetchGoals() {
