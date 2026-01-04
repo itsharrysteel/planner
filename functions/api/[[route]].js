@@ -100,6 +100,38 @@ export async function onRequest(context) {
         return Response.json(info);
     }
 
+    // --- BATCH TASK OPERATIONS ---
+    if (resource === 'tasks' && path[2] === 'batch_delete') {
+        const ids = data.ids;
+        if (ids && ids.length > 0) {
+            const stmts = ids.map(id => db.prepare('DELETE FROM tasks WHERE id = ?').bind(id));
+            await db.batch(stmts);
+        }
+        return Response.json({ success: true });
+    }
+
+    if (resource === 'tasks' && path[2] === 'batch_update') {
+        const ids = data.ids;
+        const updates = data.updates; // e.g., { due_date: '...' }
+        
+        if (ids && ids.length > 0) {
+            // Construct dynamic update query
+            let fields = [];
+            let values = [];
+            
+            if (updates.due_date !== undefined) { fields.push("due_date = ?"); values.push(updates.due_date); }
+            if (updates.type !== undefined) { fields.push("type = ?"); values.push(updates.type); }
+            if (updates.status !== undefined) { fields.push("status = ?"); values.push(updates.status); }
+            
+            if (fields.length > 0) {
+                const sql = `UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`;
+                const stmts = ids.map(id => db.prepare(sql).bind(...values, id));
+                await db.batch(stmts);
+            }
+        }
+        return Response.json({ success: true });
+    }
+
     // --- GOALS ---
     if (resource === 'goals' && path[2] === 'add') {
       const info = await db.prepare(
