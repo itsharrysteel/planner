@@ -503,3 +503,35 @@ column-count: 4;
 }
 .date-input-fake:hover { border-color: var(--accent); }
 .date-input-fake span { pointer-events: none; }
+
+/* --- DATE SUGGESTION CHIP --- */
+.date-suggestion-chip {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-40%); /* Center vertically */
+    background: #e3f2fd;
+    color: #3498db;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(52, 152, 219, 0.2);
+    border: 1px solid #abd9f7;
+    animation: slideIn 0.2s ease-out;
+    display: none; /* Hidden by default */
+    align-items: center;
+    gap: 5px;
+    z-index: 10;
+    white-space: nowrap;
+}
+.date-suggestion-chip:hover {
+    background: #d6eaf8;
+    transform: translateY(-40%) scale(1.02);
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translate(10px, -40%); }
+    to { opacity: 1; transform: translate(0, -40%); }
+}
