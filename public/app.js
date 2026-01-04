@@ -65,22 +65,20 @@ function loadDashboard() {
     if(greetEl) greetEl.innerText = greet + ", User";
     if(dateEl) dateEl.innerText = date.toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
+    // Only count Personal tasks now
     const personalTodos = allTasks.filter(t => t.type === 'Personal' && t.status !== 'Done');
-    const workTodos = allTasks.filter(t => t.type === 'Work' && t.status !== 'Done');
     
-    if(document.getElementById('dash-task-count')) document.getElementById('dash-task-count').innerText = personalTodos.length + workTodos.length;
-    if(document.getElementById('dash-personal-count')) document.getElementById('dash-personal-count').innerText = personalTodos.length;
-    if(document.getElementById('dash-work-count')) document.getElementById('dash-work-count').innerText = workTodos.length;
+    if(document.getElementById('dash-task-count')) document.getElementById('dash-task-count').innerText = personalTodos.length;
 
     const list = document.getElementById('dash-todo-list');
     if(list) {
         list.innerHTML = '';
-        const topTasks = [...personalTodos, ...workTodos].slice(0, 3);
+        const topTasks = personalTodos.slice(0, 3);
         if (topTasks.length === 0) list.innerHTML = '<li>No active tasks! Relax.</li>';
         else {
             topTasks.forEach(t => {
                 const li = document.createElement('li');
-                li.innerHTML = `<span>${t.title}</span> <span style="font-size:0.7rem; background:#eee; padding:2px 5px; border-radius:4px;">${t.type}</span>`;
+                li.innerHTML = `<span>${t.title}</span>`;
                 list.appendChild(li);
             });
         }
@@ -119,7 +117,6 @@ function toggleSelectionMode() {
     isSelectionMode = !isSelectionMode;
     selectedTaskIds.clear();
     
-    // Toggle UI State
     document.body.classList.toggle('selection-mode', isSelectionMode);
     
     const btn = document.getElementById('btn-select-mode');
@@ -130,16 +127,14 @@ function toggleSelectionMode() {
     }
     
     updateBulkToolbar();
-    renderTasks(); // Re-render to show/hide checkboxes/circles
+    renderTasks();
 }
 
 function handleTaskSelection(id) {
     if(!isSelectionMode) return;
-    
     if(selectedTaskIds.has(id)) selectedTaskIds.delete(id);
     else selectedTaskIds.add(id);
-    
-    renderTasks(); // Re-render to update highlights
+    renderTasks();
     updateBulkToolbar();
 }
 
@@ -156,58 +151,39 @@ function updateBulkToolbar() {
     }
 }
 
-// --- BULK ACTIONS ---
 async function bulkActionDelete() {
     if(!confirm(`Delete ${selectedTaskIds.size} tasks?`)) return;
-    
     const ids = Array.from(selectedTaskIds);
     await fetch('/api/tasks/batch_delete', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ ids })
     });
-    
-    toggleSelectionMode(); // Exit mode
+    toggleSelectionMode();
     fetchTasks();
 }
 
 async function bulkActionDate() {
-    // Open date picker for "batch" logic
-    // We reuse the context menu but trick it
-    activeDateTaskId = 'batch'; // Special flag
+    activeDateTaskId = 'batch';
     openDateMenu({ currentTarget: document.querySelector('.bulk-btn') }, 'batch');
 }
 
 async function bulkActionMove() {
-    // Determine possible sections/lists
-    // 1. Headers in Personal List
     const headers = allTasks.filter(t => t.type === 'Personal' && t.is_header);
-    
-    // Create a simple prompt or custom menu. For speed, let's use a native prompt for now, 
-    // or reusing the context menu would be slicker but harder to construct dynamically.
-    // Let's build a dynamic string for prompt.
-    let msg = "Move selected tasks to:\n\n[W] Work List\n[P] Personal (Top)\n";
+    let msg = "Move selected tasks to:\n\n[T] Top of List\n";
     headers.forEach((h, i) => msg += `[${i+1}] ${h.title}\n`);
     
     const choice = prompt(msg);
     if(!choice) return;
     
-    let updates = {};
-    let newOrder = Date.now();
+    let updates = { type: 'Personal' };
     
-    if(choice.toLowerCase() === 'w') {
-        updates = { type: 'Work', status: 'Todo' };
-    } else if (choice.toLowerCase() === 'p') {
-        updates = { type: 'Personal', position_order: newOrder };
+    if(choice.toLowerCase() === 't') {
+        updates.position_order = Date.now();
     } else {
-        // Did they pick a number?
         const index = parseInt(choice) - 1;
         if (headers[index]) {
-            // Move UNDER this header
-            const header = headers[index];
-            updates = { type: 'Personal', position_order: (header.position_order || 0) + 1 };
-            // Note: This puts them all at the same spot, next sort handles it or we should distribute
-            // Ideally we'd loop and increment, but for batch update we'll just set them near.
+            updates.position_order = (headers[index].position_order || 0) + 1;
         } else {
             return;
         }
@@ -219,7 +195,6 @@ async function bulkActionMove() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ ids, updates })
     });
-    
     toggleSelectionMode();
     fetchTasks();
 }
@@ -228,150 +203,72 @@ async function bulkActionMove() {
 function renderTasks() {
     const personalList = document.getElementById('personal-task-list');
     if(!personalList) return;
-    
     personalList.innerHTML = '';
-    
-    const columns = {
-        'Todo': document.querySelector('#col-todo .task-container'),
-        'In-Progress': document.querySelector('#col-inprogress .task-container'),
-        'On-Hold': document.querySelector('#col-onhold .task-container'),
-        'Done': document.querySelector('#col-done .task-container')
-    };
-    if(columns['Todo']) Object.values(columns).forEach(col => col.innerHTML = '');
-
-    const counts = { 'Todo': 0, 'In-Progress': 0, 'On-Hold': 0, 'Done': 0 };
 
     allTasks.forEach(task => {
-        // Determine Selection State
+        // Only render Personal items now
+        if (task.type !== 'Personal') return;
+
         const isSelected = selectedTaskIds.has(task.id);
         const selectedClass = isSelected ? 'task-selected' : '';
-        const clickHandler = isSelectionMode 
-            ? `onclick="handleTaskSelection(${task.id})"` 
-            : ''; // Normal click handled by children or ignored on row
 
-        // --- PERSONAL LIST ---
-        if (task.type === 'Personal') {
-            const div = document.createElement('div');
+        const div = document.createElement('div');
+        
+        if (task.is_header) {
+            div.className = `personal-header`;
+            div.innerHTML = `
+                <span>${task.title}</span>
+                ${!isSelectionMode ? `<button onclick="deleteTaskDirect(${task.id})" style="color:#999; border:none; background:none; cursor:pointer;">x</button>` : ''}
+            `;
+        } else {
+            div.className = `personal-task ${selectedClass}`;
+            if(isSelectionMode) div.setAttribute('onclick', `handleTaskSelection(${task.id})`);
             
-            if (task.is_header) {
-                div.className = `personal-header`;
-                // Headers generally not selectable for bulk delete, but let's allow it? 
-                // Usually better to keep them static. Let's disable selection for headers for now.
-                div.innerHTML = `
-                    <span>${task.title}</span>
-                    ${!isSelectionMode ? `<button onclick="deleteTaskDirect(${task.id})" style="color:#999; border:none; background:none; cursor:pointer;">x</button>` : ''}
-                `;
-            } else {
-                div.className = `personal-task ${selectedClass}`;
-                if(isSelectionMode) div.setAttribute('onclick', `handleTaskSelection(${task.id})`);
-                
-                // Format Date
-                let dateDisplay = "Add Date";
-                let dateClass = "";
-                if (task.due_date) {
-                    const today = new Date(); today.setHours(0,0,0,0);
-                    const due = new Date(task.due_date); due.setHours(0,0,0,0);
-                    const diff = (due - today) / (1000 * 60 * 60 * 24);
-                    if (diff < 0) { dateDisplay = `Overdue ${task.due_date}`; dateClass = "overdue"; }
-                    else if (diff === 0) { dateDisplay = "Today"; dateClass = "today"; }
-                    else if (diff === 1) { dateDisplay = "Tomorrow"; }
-                    else { dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); }
-                }
-
-                // Conditional HTML based on mode
-                const dragHandle = isSelectionMode ? 
-                    `<div class="select-indicator"></div>` : 
-                    `<span style="color:#ccc; cursor:grab; margin-right:8px;">☰</span>
-                     <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">`;
-
-                const titleAction = isSelectionMode ? '' : `onclick="openTaskModalId(${task.id})"`;
-                const dateAction = isSelectionMode ? '' : `onclick="openDateMenu(event, ${task.id})"`;
-
-                div.innerHTML = `
-                    <div style="padding-top:2px; display:flex; align-items:center;">
-                        ${dragHandle}
-                    </div>
-                    <div class="personal-task-content">
-                        <span class="personal-task-title ${task.status === 'Done' ? 'done-text' : ''}" 
-                              style="${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}" 
-                              ${titleAction}>
-                              ${task.title}
-                        </span>
-                        <span class="personal-date-badge ${dateClass}" ${dateAction}>
-                           ${task.due_date ? '📅 ' + dateDisplay : '➕ Add Date'}
-                        </span>
-                    </div>
-                `;
+            // Format Date
+            let dateDisplay = "Add Date";
+            let dateClass = "";
+            if (task.due_date) {
+                const today = new Date(); today.setHours(0,0,0,0);
+                const due = new Date(task.due_date); due.setHours(0,0,0,0);
+                const diff = (due - today) / (1000 * 60 * 60 * 24);
+                if (diff < 0) { dateDisplay = `Overdue ${task.due_date}`; dateClass = "overdue"; }
+                else if (diff === 0) { dateDisplay = "Today"; dateClass = "today"; }
+                else if (diff === 1) { dateDisplay = "Tomorrow"; }
+                else { dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); }
             }
-            
-            if(!isSelectionMode) {
-                div.draggable = true;
-                div.dataset.id = task.id;
-                addPersonalDragEvents(div);
-            }
-            personalList.appendChild(div);
-        } 
-        // --- WORK KANBAN ---
-        else if (columns['Todo']) { 
-            const statusKey = task.status || 'Todo';
-            if (columns[statusKey]) {
-                counts[statusKey]++; 
-                
-                let colorClass = `status-${statusKey.toLowerCase().replace('-','')}`;
-                if(isSelected) colorClass += ' task-selected';
-                
-                let dateBadge = '';
-                if (task.due_date && statusKey !== 'Done') {
-                    const today = new Date().setHours(0,0,0,0);
-                    const due = new Date(task.due_date).setHours(0,0,0,0);
-                    const diffDays = (due - today) / (1000 * 60 * 60 * 24);
-                    if (diffDays < 0) { colorClass += ' urgent-overdue'; dateBadge = 'Overdue!'; }
-                    else if (diffDays === 0) { colorClass += ' urgent-today'; dateBadge = 'Due Today'; }
-                    else if (diffDays <= 3) { colorClass += ' urgent-soon'; dateBadge = 'Due Soon'; }
-                }
 
-                // Format Date
-                let formattedDue = "";
-                if (task.due_date) {
-                    const d = new Date(task.due_date);
-                    const day = d.getDate();
-                    const suffix = (day > 3 && day < 21) ? 'th' : ['th', 'st', 'nd', 'rd'][day % 10] || 'th';
-                    const weekday = d.toLocaleDateString('en-GB', { weekday: 'long' });
-                    const month = d.toLocaleDateString('en-GB', { month: 'short' });
-                    formattedDue = `${weekday} ${day}${suffix} ${month}`;
-                }
+            const dragHandle = isSelectionMode ? 
+                `<div class="select-indicator"></div>` : 
+                `<span style="color:#ccc; cursor:grab; margin-right:8px;">☰</span>
+                 <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">`;
 
-                const card = document.createElement('div');
-                card.className = `task-card ${colorClass}`;
-                if(isSelectionMode) {
-                    card.onclick = () => handleTaskSelection(task.id);
-                    // Add visual indicator
-                    card.innerHTML = `<div class="select-indicator" style="${isSelected?'display:flex':''}"></div>`;
-                } else {
-                    card.draggable = true;
-                    card.onclick = () => openTaskModal(task); 
-                    addTaskDragEvents(card); 
-                }
-                
-                card.dataset.id = task.id;
-                card.dataset.status = statusKey;
-                
-                card.innerHTML += `
-                    <div style="font-weight:600;">${task.title}</div>
-                    ${dateBadge ? `<span class="task-date-badge">${dateBadge}</span>` : ''}
-                    ${task.due_date ? `<div class="task-meta">Due: ${formattedDue}</div>` : ''}
-                `;
-                columns[statusKey].appendChild(card);
-            }
+            const titleAction = isSelectionMode ? '' : `onclick="openTaskModalId(${task.id})"`;
+            const dateAction = isSelectionMode ? '' : `onclick="openDateMenu(event, ${task.id})"`;
+
+            div.innerHTML = `
+                <div style="padding-top:2px; display:flex; align-items:center;">
+                    ${dragHandle}
+                </div>
+                <div class="personal-task-content">
+                    <span class="personal-task-title ${task.status === 'Done' ? 'done-text' : ''}" 
+                          style="${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}" 
+                          ${titleAction}>
+                          ${task.title}
+                    </span>
+                    <span class="personal-date-badge ${dateClass}" ${dateAction}>
+                       ${task.due_date ? '📅 ' + dateDisplay : '➕ Add Date'}
+                    </span>
+                </div>
+            `;
         }
+        
+        if(!isSelectionMode) {
+            div.draggable = true;
+            div.dataset.id = task.id;
+            addPersonalDragEvents(div);
+        }
+        personalList.appendChild(div);
     });
-
-    if(document.getElementById('count-todo')) {
-        document.getElementById('count-todo').innerText = counts['Todo'];
-        document.getElementById('count-inprogress').innerText = counts['In-Progress'];
-        document.getElementById('count-onhold').innerText = counts['On-Hold'];
-        document.getElementById('count-done').innerText = counts['Done'];
-    }
 }
 
 /* --- NATURAL LANGUAGE DATE PARSER --- */
@@ -484,7 +381,6 @@ async function applyDatePreset(preset) {
     }
 
     if(activeDateTaskId === 'batch') {
-        // Bulk Update Date
         const ids = Array.from(selectedTaskIds);
         await fetch('/api/tasks/batch_update', {
             method: 'POST',
@@ -515,8 +411,6 @@ async function applyCustomDate(dateStr) {
 function updateModalDateUI(dateStr, fieldType) {
     let inputId, textId;
     if (fieldType === 'modal-due') { inputId = 'task-due'; textId = 'modal-due-text'; }
-    else if (fieldType === 'modal-start') { inputId = 'task-start'; textId = 'modal-start-text'; }
-    else if (fieldType === 'modal-review') { inputId = 'task-review'; textId = 'modal-review-text'; }
     else return;
 
     document.getElementById(inputId).value = dateStr || '';
@@ -533,8 +427,8 @@ async function saveTaskDate(id, dateStr) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            id: task.id, title: task.title, type: task.type, status: task.status, 
-            description: task.description, start_date: task.start_date, due_date: dateStr, review_date: task.review_date 
+            id: task.id, title: task.title, type: 'Personal', status: task.status, 
+            description: task.description, due_date: dateStr 
         })
     });
 }
@@ -589,93 +483,34 @@ function addPersonalDragEvents(row) {
     row.addEventListener('dragend', function() { this.classList.remove('dragging'); this.style.borderTop = ''; this.style.borderBottom = ''; });
 }
 
-let taskDraggedId = null;
-function addTaskDragEvents(card) {
-    card.addEventListener('dragstart', function(e) { taskDraggedId = this.dataset.id; e.dataTransfer.effectAllowed = 'move'; this.classList.add('dragging'); });
-    card.addEventListener('dragend', function() { this.classList.remove('dragging'); document.querySelectorAll('.task-container').forEach(c => c.style.background = ''); });
-}
-document.querySelectorAll('.task-container').forEach(container => {
-    container.addEventListener('dragover', e => { e.preventDefault(); container.style.background = '#f4f5f7'; });
-    container.addEventListener('dragleave', e => { container.style.background = ''; });
-    container.addEventListener('drop', async function(e) {
-        e.preventDefault(); container.style.background = '';
-        const newStatus = this.dataset.status; 
-        const targetCard = e.target.closest('.task-card');
-        if (targetCard && taskDraggedId && targetCard.dataset.id !== taskDraggedId) {
-            const targetId = targetCard.dataset.id;
-            const itemA = allTasks.find(t => t.id == taskDraggedId);
-            const itemB = allTasks.find(t => t.id == targetId);
-            const temp = itemA.position_order;
-            itemA.position_order = itemB.position_order;
-            itemB.position_order = temp;
-            itemA.status = newStatus; 
-            allTasks.sort((a,b) => a.position_order - b.position_order);
-            renderTasks();
-            await fetch('/api/tasks/update_order', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ id: taskDraggedId, swap_with_id: targetId })
-            });
-        } else if (taskDraggedId) {
-            const item = allTasks.find(t => t.id == taskDraggedId);
-            if (item.status !== newStatus) {
-                item.status = newStatus;
-                item.position_order = Date.now(); 
-                renderTasks();
-                await fetch('/api/tasks/update_order', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ id: taskDraggedId, new_status: newStatus })
-                });
-            }
-        }
-    });
-});
-
 // --- MODALS ---
-function openAddTaskModal(type) { openTaskModal(null, type); }
+function openAddTaskModal() { openTaskModal(null); }
 function openTaskModalId(id) { const task = allTasks.find(t => t.id === id); if(task) openTaskModal(task); }
 
-function openTaskModal(task, defaultType = 'Work') {
+function openTaskModal(task) {
     const modal = document.getElementById('task-modal');
     if(!modal) return;
-    const updateFormLayout = (type) => {
-        const statusContainer = document.getElementById('status-container');
-        if(statusContainer) statusContainer.style.visibility = (type === 'Personal') ? 'hidden' : 'visible';
-        const workDates = document.getElementById('work-dates-wrapper');
-        if(workDates) workDates.style.display = (type === 'Personal') ? 'none' : 'grid';
-    };
+    
     if (task) {
         document.getElementById('task-modal-title').innerText = "Edit Task";
         document.getElementById('task-id').value = task.id;
         document.getElementById('task-title').value = task.title;
-        document.getElementById('task-type').value = task.type || 'Work';
-        document.getElementById('task-status-select').value = task.status || 'Todo';
         document.getElementById('task-desc').value = task.description || '';
         updateModalDateUI(task.due_date, 'modal-due');
-        updateModalDateUI(task.start_date, 'modal-start');
-        updateModalDateUI(task.review_date, 'modal-review');
-        updateFormLayout(task.type);
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'block';
     } else {
         document.getElementById('task-modal-title').innerText = "New Task";
         document.getElementById('task-id').value = '';
         document.getElementById('task-title').value = '';
-        document.getElementById('task-type').value = defaultType;
-        document.getElementById('task-status-select').value = 'Todo';
         document.getElementById('task-desc').value = '';
         updateModalDateUI("", 'modal-due');
-        updateModalDateUI("", 'modal-start');
-        updateModalDateUI("", 'modal-review');
-        updateFormLayout(defaultType);
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'none';
         
         document.getElementById('date-suggestion').style.display = 'none';
         setTimeout(() => document.getElementById('task-title').focus(), 100);
     }
-    document.getElementById('task-type').onchange = (e) => updateFormLayout(e.target.value);
     modal.style.display = 'block';
 }
 
@@ -686,32 +521,29 @@ function handleTaskTitleKey(e) {
 async function saveTask(isQuickMode = false) {
     const id = document.getElementById('task-id').value;
     const title = document.getElementById('task-title').value;
-    const type = document.getElementById('task-type').value;
-    const status = document.getElementById('task-status-select').value;
     const desc = document.getElementById('task-desc').value;
-    const start = document.getElementById('task-start').value;
-    const review = document.getElementById('task-review').value;
     const due = document.getElementById('task-due').value;
 
     if (!title) return alert("Task title required");
 
+    // Force Type='Personal'
     await fetch('/api/tasks/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: id || null, title, type, status, description: desc, start_date: start, due_date: due, review_date: review })
+        body: JSON.stringify({ 
+            id: id || null, 
+            title, type: 'Personal', status: 'Todo', 
+            description: desc, due_date: due
+        })
     });
 
     if (isQuickMode && !id) {
         document.getElementById('task-title').value = '';
         document.getElementById('date-suggestion').style.display = 'none'; 
         
-        // RESET DATES SO THEY DON'T LINGER
+        // RESET DATES
         document.getElementById('task-due').value = '';
-        document.getElementById('task-start').value = '';
-        document.getElementById('task-review').value = '';
         updateModalDateUI("", 'modal-due');
-        updateModalDateUI("", 'modal-start');
-        updateModalDateUI("", 'modal-review');
 
         fetchTasks(); 
         document.getElementById('task-title').focus();
@@ -749,9 +581,6 @@ async function updateTaskStatusSimple(id, newStatus) {
     renderTasks();
     await fetch('/api/tasks/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, status: newStatus }) });
 }
-
-/* --- GOALS, BUDGET, VISION CODE REMAINS SAME (OMITTED FOR BREVITY, KEEP YOUR EXISTING CODE FOR THOSE SECTIONS IF UNCHANGED) --- */
-// But since you asked for the FULL file, I will include the rest below to ensure nothing breaks.
 
 /* --- GOALS LOGIC --- */
 async function fetchGoals() {
