@@ -14,6 +14,11 @@ function setupNavigation() {
                 if (section.id === targetId) section.classList.add('active');
             });
             if(targetId === 'dashboard') fetchTasks().then(() => fetchBudget().then(loadDashboard));
+            
+            // Mobile: Close sidebar when a link is clicked
+            if (window.innerWidth <= 768) {
+                document.body.classList.remove('mobile-open');
+            }
         });
     });
 
@@ -31,6 +36,15 @@ function setupNavigation() {
             closeAllModals();
         }
     });
+}
+
+function toggleSidebar() {
+    // Check screen size to decide which class to toggle
+    if (window.innerWidth <= 768) {
+        document.body.classList.toggle('mobile-open');
+    } else {
+        document.body.classList.toggle('collapsed');
+    }
 }
 
 function closeAllModals() {
