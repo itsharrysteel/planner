@@ -611,3 +611,72 @@ body.collapsed .sidebar {
 @media (min-width: 769px) {
     .sidebar-toggle { display: block; } /* Optional: Keep button on desktop to allow collapsing */
 }
+
+/* --- SELECTION MODE --- */
+.selection-mode .personal-task,
+.selection-mode .task-card {
+    cursor: pointer !important;
+}
+
+/* Hide normal controls in selection mode */
+.selection-mode input[type="checkbox"], 
+.selection-mode .personal-actions button,
+.selection-mode .task-card input {
+    display: none !important;
+}
+
+/* The Selection Circle */
+.select-indicator {
+    width: 20px; height: 20px;
+    border: 2px solid #ccc;
+    border-radius: 50%;
+    margin-right: 10px;
+    display: none; /* Hidden normally */
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+.selection-mode .select-indicator { display: flex; }
+
+/* Selected State */
+.task-selected {
+    background-color: #e3f2fd !important;
+    border-color: #2196f3 !important;
+}
+.task-selected .select-indicator {
+    background: #2196f3;
+    border-color: #2196f3;
+}
+.task-selected .select-indicator::after {
+    content: '✓'; color: white; font-size: 12px;
+}
+
+/* Bulk Toolbar */
+.bulk-toolbar {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px); /* Hidden down */
+    background: #2c3e50;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 50px;
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 4000;
+}
+.bulk-toolbar.active {
+    transform: translateX(-50%) translateY(0);
+}
+.bulk-btn {
+    background: none; border: none; color: white;
+    cursor: pointer; font-size: 0.9rem;
+    display: flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 20px;
+}
+.bulk-btn:hover { background: rgba(255,255,255,0.1); }
+.bulk-btn.danger { color: #ff8a80; }
+.bulk-divider { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
