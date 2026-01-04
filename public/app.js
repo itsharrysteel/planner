@@ -1,3 +1,7 @@
+/* --- GLOBAL STATE --- */
+let isSelectionMode = false;
+let selectedTaskIds = new Set();
+
 /* --- NAVIGATION --- */
 function setupNavigation() {
     const links = document.querySelectorAll('.nav-link');
@@ -15,14 +19,13 @@ function setupNavigation() {
             });
             if(targetId === 'dashboard') fetchTasks().then(() => fetchBudget().then(loadDashboard));
             
-            // Mobile: Close sidebar when a link is clicked
-            if (window.innerWidth <= 768) {
-                document.body.classList.remove('mobile-open');
-            }
+            // Exit selection mode if navigating away
+            if(isSelectionMode) toggleSelectionMode();
+            
+            if (window.innerWidth <= 768) document.body.classList.remove('mobile-open');
         });
     });
 
-    // Close context menu when clicking elsewhere
     document.addEventListener('click', (e) => {
         const menu = document.getElementById('date-context-menu');
         if (menu && menu.style.display === 'block' && !e.target.closest('.personal-date-badge') && !e.target.closest('.date-input-fake') && !e.target.closest('.context-menu')) {
@@ -30,21 +33,14 @@ function setupNavigation() {
         }
     });
 
-    // GLOBAL SHORTCUTS: Escape to close all modals
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeAllModals();
-        }
+        if (e.key === 'Escape') closeAllModals();
     });
 }
 
 function toggleSidebar() {
-    // Check screen size to decide which class to toggle
-    if (window.innerWidth <= 768) {
-        document.body.classList.toggle('mobile-open');
-    } else {
-        document.body.classList.toggle('collapsed');
-    }
+    if (window.innerWidth <= 768) document.body.classList.toggle('mobile-open');
+    else document.body.classList.toggle('collapsed');
 }
 
 function closeAllModals() {
@@ -53,6 +49,7 @@ function closeAllModals() {
         const el = document.getElementById(id);
         if (el) el.style.display = 'none';
     });
+    if(isSelectionMode) toggleSelectionMode();
 }
 
 /* --- DASHBOARD LOGIC --- */
@@ -118,6 +115,116 @@ async function fetchTasks() {
     } catch (err) { console.error("Error loading tasks:", err); }
 }
 
+function toggleSelectionMode() {
+    isSelectionMode = !isSelectionMode;
+    selectedTaskIds.clear();
+    
+    // Toggle UI State
+    document.body.classList.toggle('selection-mode', isSelectionMode);
+    
+    const btn = document.getElementById('btn-select-mode');
+    if(btn) {
+        btn.style.background = isSelectionMode ? 'var(--primary)' : 'white';
+        btn.style.color = isSelectionMode ? 'white' : 'var(--primary)';
+        btn.innerText = isSelectionMode ? 'Done' : 'Select';
+    }
+    
+    updateBulkToolbar();
+    renderTasks(); // Re-render to show/hide checkboxes/circles
+}
+
+function handleTaskSelection(id) {
+    if(!isSelectionMode) return;
+    
+    if(selectedTaskIds.has(id)) selectedTaskIds.delete(id);
+    else selectedTaskIds.add(id);
+    
+    renderTasks(); // Re-render to update highlights
+    updateBulkToolbar();
+}
+
+function updateBulkToolbar() {
+    const toolbar = document.getElementById('bulk-toolbar');
+    const countSpan = document.getElementById('bulk-count');
+    if(!toolbar) return;
+    
+    if(isSelectionMode && selectedTaskIds.size > 0) {
+        toolbar.classList.add('active');
+        countSpan.innerText = selectedTaskIds.size;
+    } else {
+        toolbar.classList.remove('active');
+    }
+}
+
+// --- BULK ACTIONS ---
+async function bulkActionDelete() {
+    if(!confirm(`Delete ${selectedTaskIds.size} tasks?`)) return;
+    
+    const ids = Array.from(selectedTaskIds);
+    await fetch('/api/tasks/batch_delete', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ids })
+    });
+    
+    toggleSelectionMode(); // Exit mode
+    fetchTasks();
+}
+
+async function bulkActionDate() {
+    // Open date picker for "batch" logic
+    // We reuse the context menu but trick it
+    activeDateTaskId = 'batch'; // Special flag
+    openDateMenu({ currentTarget: document.querySelector('.bulk-btn') }, 'batch');
+}
+
+async function bulkActionMove() {
+    // Determine possible sections/lists
+    // 1. Headers in Personal List
+    const headers = allTasks.filter(t => t.type === 'Personal' && t.is_header);
+    
+    // Create a simple prompt or custom menu. For speed, let's use a native prompt for now, 
+    // or reusing the context menu would be slicker but harder to construct dynamically.
+    // Let's build a dynamic string for prompt.
+    let msg = "Move selected tasks to:\n\n[W] Work List\n[P] Personal (Top)\n";
+    headers.forEach((h, i) => msg += `[${i+1}] ${h.title}\n`);
+    
+    const choice = prompt(msg);
+    if(!choice) return;
+    
+    let updates = {};
+    let newOrder = Date.now();
+    
+    if(choice.toLowerCase() === 'w') {
+        updates = { type: 'Work', status: 'Todo' };
+    } else if (choice.toLowerCase() === 'p') {
+        updates = { type: 'Personal', position_order: newOrder };
+    } else {
+        // Did they pick a number?
+        const index = parseInt(choice) - 1;
+        if (headers[index]) {
+            // Move UNDER this header
+            const header = headers[index];
+            updates = { type: 'Personal', position_order: (header.position_order || 0) + 1 };
+            // Note: This puts them all at the same spot, next sort handles it or we should distribute
+            // Ideally we'd loop and increment, but for batch update we'll just set them near.
+        } else {
+            return;
+        }
+    }
+    
+    const ids = Array.from(selectedTaskIds);
+    await fetch('/api/tasks/batch_update', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ids, updates })
+    });
+    
+    toggleSelectionMode();
+    fetchTasks();
+}
+
+
 function renderTasks() {
     const personalList = document.getElementById('personal-task-list');
     if(!personalList) return;
@@ -135,57 +242,73 @@ function renderTasks() {
     const counts = { 'Todo': 0, 'In-Progress': 0, 'On-Hold': 0, 'Done': 0 };
 
     allTasks.forEach(task => {
+        // Determine Selection State
+        const isSelected = selectedTaskIds.has(task.id);
+        const selectedClass = isSelected ? 'task-selected' : '';
+        const clickHandler = isSelectionMode 
+            ? `onclick="handleTaskSelection(${task.id})"` 
+            : ''; // Normal click handled by children or ignored on row
+
         // --- PERSONAL LIST ---
         if (task.type === 'Personal') {
             const div = document.createElement('div');
             
             if (task.is_header) {
-                div.className = 'personal-header';
+                div.className = `personal-header`;
+                // Headers generally not selectable for bulk delete, but let's allow it? 
+                // Usually better to keep them static. Let's disable selection for headers for now.
                 div.innerHTML = `
                     <span>${task.title}</span>
-                    <button onclick="deleteTaskDirect(${task.id})" style="color:#999; border:none; background:none; cursor:pointer;">x</button>
+                    ${!isSelectionMode ? `<button onclick="deleteTaskDirect(${task.id})" style="color:#999; border:none; background:none; cursor:pointer;">x</button>` : ''}
                 `;
             } else {
-                div.className = 'personal-task';
+                div.className = `personal-task ${selectedClass}`;
+                if(isSelectionMode) div.setAttribute('onclick', `handleTaskSelection(${task.id})`);
                 
-                // Format Date for Display
+                // Format Date
                 let dateDisplay = "Add Date";
                 let dateClass = "";
-                
                 if (task.due_date) {
                     const today = new Date(); today.setHours(0,0,0,0);
                     const due = new Date(task.due_date); due.setHours(0,0,0,0);
                     const diff = (due - today) / (1000 * 60 * 60 * 24);
-                    
                     if (diff < 0) { dateDisplay = `Overdue ${task.due_date}`; dateClass = "overdue"; }
                     else if (diff === 0) { dateDisplay = "Today"; dateClass = "today"; }
                     else if (diff === 1) { dateDisplay = "Tomorrow"; }
-                    else { 
-                        dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); 
-                    }
+                    else { dateDisplay = due.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); }
                 }
 
+                // Conditional HTML based on mode
+                const dragHandle = isSelectionMode ? 
+                    `<div class="select-indicator"></div>` : 
+                    `<span style="color:#ccc; cursor:grab; margin-right:8px;">☰</span>
+                     <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">`;
+
+                const titleAction = isSelectionMode ? '' : `onclick="openTaskModalId(${task.id})"`;
+                const dateAction = isSelectionMode ? '' : `onclick="openDateMenu(event, ${task.id})"`;
+
                 div.innerHTML = `
-                    <div style="padding-top:2px;">
-                        <span style="color:#ccc; cursor:grab; margin-right:8px;">☰</span>
-                        <input type="checkbox" ${task.status === 'Done' ? 'checked' : ''} onchange="updateTaskStatusSimple(${task.id}, this.checked ? 'Done' : 'Todo')">
+                    <div style="padding-top:2px; display:flex; align-items:center;">
+                        ${dragHandle}
                     </div>
                     <div class="personal-task-content">
                         <span class="personal-task-title ${task.status === 'Done' ? 'done-text' : ''}" 
                               style="${task.status === 'Done' ? 'text-decoration:line-through; color:#aaa' : ''}" 
-                              onclick="openTaskModalId(${task.id})">
+                              ${titleAction}>
                               ${task.title}
                         </span>
-                        <span class="personal-date-badge ${dateClass}" onclick="openDateMenu(event, ${task.id})">
+                        <span class="personal-date-badge ${dateClass}" ${dateAction}>
                            ${task.due_date ? '📅 ' + dateDisplay : '➕ Add Date'}
                         </span>
                     </div>
                 `;
             }
             
-            div.draggable = true;
-            div.dataset.id = task.id;
-            addPersonalDragEvents(div);
+            if(!isSelectionMode) {
+                div.draggable = true;
+                div.dataset.id = task.id;
+                addPersonalDragEvents(div);
+            }
             personalList.appendChild(div);
         } 
         // --- WORK KANBAN ---
@@ -195,18 +318,19 @@ function renderTasks() {
                 counts[statusKey]++; 
                 
                 let colorClass = `status-${statusKey.toLowerCase().replace('-','')}`;
-                let dateBadge = '';
+                if(isSelected) colorClass += ' task-selected';
                 
+                let dateBadge = '';
                 if (task.due_date && statusKey !== 'Done') {
                     const today = new Date().setHours(0,0,0,0);
                     const due = new Date(task.due_date).setHours(0,0,0,0);
                     const diffDays = (due - today) / (1000 * 60 * 60 * 24);
-                    if (diffDays < 0) { colorClass = 'urgent-overdue'; dateBadge = 'Overdue!'; }
-                    else if (diffDays === 0) { colorClass = 'urgent-today'; dateBadge = 'Due Today'; }
-                    else if (diffDays <= 3) { colorClass = 'urgent-soon'; dateBadge = 'Due Soon'; }
+                    if (diffDays < 0) { colorClass += ' urgent-overdue'; dateBadge = 'Overdue!'; }
+                    else if (diffDays === 0) { colorClass += ' urgent-today'; dateBadge = 'Due Today'; }
+                    else if (diffDays <= 3) { colorClass += ' urgent-soon'; dateBadge = 'Due Soon'; }
                 }
 
-                // Format Date: "Friday 19th Dec"
+                // Format Date
                 let formattedDue = "";
                 if (task.due_date) {
                     const d = new Date(task.due_date);
@@ -219,16 +343,24 @@ function renderTasks() {
 
                 const card = document.createElement('div');
                 card.className = `task-card ${colorClass}`;
-                card.draggable = true;
+                if(isSelectionMode) {
+                    card.onclick = () => handleTaskSelection(task.id);
+                    // Add visual indicator
+                    card.innerHTML = `<div class="select-indicator" style="${isSelected?'display:flex':''}"></div>`;
+                } else {
+                    card.draggable = true;
+                    card.onclick = () => openTaskModal(task); 
+                    addTaskDragEvents(card); 
+                }
+                
                 card.dataset.id = task.id;
                 card.dataset.status = statusKey;
-                card.innerHTML = `
+                
+                card.innerHTML += `
                     <div style="font-weight:600;">${task.title}</div>
                     ${dateBadge ? `<span class="task-date-badge">${dateBadge}</span>` : ''}
                     ${task.due_date ? `<div class="task-meta">Due: ${formattedDue}</div>` : ''}
                 `;
-                card.onclick = () => openTaskModal(task); 
-                addTaskDragEvents(card); 
                 columns[statusKey].appendChild(card);
             }
         }
@@ -250,7 +382,6 @@ function checkDateIntent(text) {
     const suggestionEl = document.getElementById('date-suggestion');
     suggestedDate = null;
     suggestedPhrase = "";
-    
     if (!text) { suggestionEl.style.display = 'none'; return; }
 
     const lower = text.toLowerCase();
@@ -261,80 +392,44 @@ function checkDateIntent(text) {
     const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
     const months = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
-    // 1. "Today"
-    if (/\b(today)\b/.test(lower)) {
-        targetDate = new Date();
-        phrase = "today";
-    }
-    // 2. "Tomorrow"
-    else if (/\b(tomorrow)\b/.test(lower)) {
-        targetDate = new Date();
-        targetDate.setDate(today.getDate() + 1);
-        phrase = "tomorrow";
-    }
-    // 3. "Next Week" (Defaults to next Monday)
-    else if (/\b(next week)\b/.test(lower)) {
-        targetDate = new Date();
-        targetDate.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
-        phrase = "next week";
-    }
-    // 4. Specific Date with Month (e.g. "15th July", "15 jan")
+    if (/\b(today)\b/.test(lower)) { targetDate = new Date(); phrase = "today"; }
+    else if (/\b(tomorrow)\b/.test(lower)) { targetDate = new Date(); targetDate.setDate(today.getDate() + 1); phrase = "tomorrow"; }
+    else if (/\b(next week)\b/.test(lower)) { targetDate = new Date(); targetDate.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7); phrase = "next week"; }
     else if (lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\b/)) {
         const match = lower.match(/\b(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]+)\b/);
         const day = parseInt(match[1]);
         const monthStr = match[2];
         let monthIndex = months.indexOf(monthStr.substring(0,3));
-        
         if (monthIndex > -1 && day >= 1 && day <= 31) {
-            targetDate = new Date();
-            targetDate.setMonth(monthIndex);
-            targetDate.setDate(day);
-            
-            // If date has passed this year, assume next year
-            if (targetDate < new Date(new Date().setHours(0,0,0,0))) {
-                targetDate.setFullYear(today.getFullYear() + 1);
-            }
+            targetDate = new Date(); targetDate.setMonth(monthIndex); targetDate.setDate(day);
+            if (targetDate < new Date(new Date().setHours(0,0,0,0))) targetDate.setFullYear(today.getFullYear() + 1);
             phrase = match[0];
         }
     }
-    // 5. Specific Day Name (e.g. "Monday", "on Tuesday")
     else if (lower.match(/\b(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/)) {
         const match = lower.match(/\b(?:on\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/);
         const dayName = match[1];
         const targetDay = days.indexOf(dayName);
         const currentDay = today.getDay();
-        
         let daysUntil = (targetDay - currentDay + 7) % 7;
-        if (daysUntil === 0) daysUntil = 7; // Always next occurrence
-        
-        targetDate = new Date();
-        targetDate.setDate(today.getDate() + daysUntil);
+        if (daysUntil === 0) daysUntil = 7; 
+        targetDate = new Date(); targetDate.setDate(today.getDate() + daysUntil);
         phrase = match[0];
     }
-    // 6. Simple Date (e.g. "15th", "22nd")
-    // Requires suffix to avoid matching simple numbers like "Buy 5 apples"
     else if (lower.match(/\b(\d{1,2})(st|nd|rd|th)\b/)) {
         const match = lower.match(/\b(\d{1,2})(st|nd|rd|th)\b/);
         const day = parseInt(match[1]);
-        
         if (day >= 1 && day <= 31) {
             targetDate = new Date();
-            // If day is past in current month, move to next month
-            if (day < today.getDate()) {
-                targetDate.setMonth(today.getMonth() + 1);
-            }
-            targetDate.setDate(day);
-            phrase = match[0];
+            if (day < today.getDate()) targetDate.setMonth(today.getMonth() + 1);
+            targetDate.setDate(day); phrase = match[0];
         }
     }
 
     if (targetDate) {
         suggestedDate = targetDate.toISOString().split('T')[0];
         suggestedPhrase = phrase;
-        
-        // Format display date (e.g. "Fri 20th")
         const display = targetDate.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-        
         suggestionEl.innerHTML = `📅 Set <b>${display}</b>?`;
         suggestionEl.style.display = 'flex';
     } else {
@@ -344,19 +439,11 @@ function checkDateIntent(text) {
 
 function applySuggestedDate() {
     if (!suggestedDate) return;
-    
-    // 1. Set the date in the form
     updateModalDateUI(suggestedDate, 'modal-due');
-    
-    // 2. Remove the phrase from the title (case insensitive replace)
     const titleInput = document.getElementById('task-title');
     const regex = new RegExp(`\\b${suggestedPhrase}\\b`, 'i');
     titleInput.value = titleInput.value.replace(regex, '').replace(/\s{2,}/g, ' ').trim();
-    
-    // 3. Hide suggestion
     document.getElementById('date-suggestion').style.display = 'none';
-    
-    // 4. Focus back on title so user can keep typing
     titleInput.focus();
 }
 
@@ -367,11 +454,9 @@ let activeModalField = null;
 function openDateMenu(e, source) {
     e.stopPropagation();
     if (['modal-due', 'modal-start', 'modal-review'].includes(source)) {
-        activeModalField = source;
-        activeDateTaskId = null;
+        activeModalField = source; activeDateTaskId = null;
     } else {
-        activeModalField = null;
-        activeDateTaskId = source; 
+        activeModalField = null; activeDateTaskId = source; 
     }
     const menu = document.getElementById('date-context-menu');
     const rect = e.currentTarget.getBoundingClientRect();
@@ -393,18 +478,36 @@ async function applyDatePreset(preset) {
     else if (preset === 'clear') newDate = "";
     else if (preset === 'custom') {
         const picker = document.getElementById('hidden-date-picker');
-        picker.style.top = menu.style.top;
-        picker.style.left = menu.style.left;
+        picker.style.top = menu.style.top; picker.style.left = menu.style.left;
         picker.showPicker ? picker.showPicker() : picker.click(); 
         return; 
     }
 
-    if (activeModalField) updateModalDateUI(newDate, activeModalField);
+    if(activeDateTaskId === 'batch') {
+        // Bulk Update Date
+        const ids = Array.from(selectedTaskIds);
+        await fetch('/api/tasks/batch_update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ids, updates: { due_date: newDate || null } })
+        });
+        toggleSelectionMode(); fetchTasks();
+    }
+    else if (activeModalField) updateModalDateUI(newDate, activeModalField);
     else if (activeDateTaskId) await saveTaskDate(activeDateTaskId, newDate || null);
 }
 
 async function applyCustomDate(dateStr) {
-    if (activeModalField) updateModalDateUI(dateStr, activeModalField);
+    if(activeDateTaskId === 'batch') {
+        const ids = Array.from(selectedTaskIds);
+        await fetch('/api/tasks/batch_update', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ids, updates: { due_date: dateStr } })
+        });
+        toggleSelectionMode(); fetchTasks();
+    }
+    else if (activeModalField) updateModalDateUI(dateStr, activeModalField);
     else if (activeDateTaskId) await saveTaskDate(activeDateTaskId, dateStr);
     document.getElementById('hidden-date-picker').value = '';
 }
@@ -418,14 +521,8 @@ function updateModalDateUI(dateStr, fieldType) {
 
     document.getElementById(inputId).value = dateStr || '';
     const display = document.getElementById(textId);
-    if (!dateStr) {
-        display.innerText = "Add Date";
-        display.style.color = "#333";
-    } else {
-        const d = new Date(dateStr);
-        display.innerText = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' });
-        display.style.color = "var(--accent)";
-    }
+    if (!dateStr) { display.innerText = "Add Date"; display.style.color = "#333"; }
+    else { const d = new Date(dateStr); display.innerText = d.toLocaleDateString('en-GB', { weekday:'short', day:'numeric', month:'short' }); display.style.color = "var(--accent)"; }
 }
 
 async function saveTaskDate(id, dateStr) {
@@ -436,14 +533,8 @@ async function saveTaskDate(id, dateStr) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-            id: task.id,
-            title: task.title,
-            type: task.type,
-            status: task.status,
-            description: task.description,
-            start_date: task.start_date,
-            due_date: dateStr,
-            review_date: task.review_date
+            id: task.id, title: task.title, type: task.type, status: task.status, 
+            description: task.description, start_date: task.start_date, due_date: dateStr, review_date: task.review_date 
         })
     });
 }
