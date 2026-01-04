@@ -216,7 +216,15 @@
             <input type="hidden" id="task-status">
 
             <label style="display:block; margin-top:10px; font-weight:bold; font-size:0.9rem;">Task Name</label>
-            <input type="text" id="task-title" placeholder="What needs doing?" style="width:100%; padding:0.5rem; margin-top:5px;" onkeypress="handleTaskTitleKey(event)">
+            <div style="position:relative; margin-top:5px;">
+                <input type="text" id="task-title" placeholder="What needs doing?" 
+                       style="width:100%; padding:0.5rem; padding-right: 140px;" 
+                       onkeypress="handleTaskTitleKey(event)"
+                       oninput="checkDateIntent(this.value)">
+                
+                <div id="date-suggestion" class="date-suggestion-chip" onclick="applySuggestedDate()">
+                    </div>
+            </div>
 
             <div style="display:flex; gap:10px; margin-top:15px;">
                 <div style="flex:1;">
