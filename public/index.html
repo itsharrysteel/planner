@@ -11,6 +11,8 @@
     <button class="sidebar-toggle" onclick="toggleSidebar()">☰</button>
 
     <nav class="sidebar">
+        <div class="brand">✨ 2026 North Star</div>
+        
         <a href="#dashboard" class="nav-link active">Dashboard</a>
         <a href="#daily" class="nav-link">Daily Planning</a>
         <a href="#monthly" class="nav-link">Monthly Goals</a>
@@ -33,7 +35,7 @@
                     <span class="stat-label">Outstanding Tasks</span>
                     <div class="stat-number" id="dash-task-count">0</div>
                     <div style="font-size: 0.8rem; color: #888; margin-top: 5px;">
-                        <span id="dash-personal-count">0</span> Personal • <span id="dash-work-count">0</span> Work
+                        Let's get things done.
                     </div>
                 </div>
                 <div class="stat-card">
@@ -44,7 +46,7 @@
                 <div class="stat-card">
                     <h3>📝 Up Next</h3>
                     <ul class="dashboard-list" id="dash-todo-list"><li>Loading...</li></ul>
-                    <a href="#daily" class="nav-link" style="font-size: 0.8rem; margin-top: 10px; display:inline-block;">View Board &rarr;</a>
+                    <a href="#daily" class="nav-link" style="font-size: 0.8rem; margin-top: 10px; display:inline-block;">View List &rarr;</a>
                 </div>
                 <div class="scratchpad-container">
                     <h3>💡 Quick Notes / Scratchpad</h3>
@@ -62,15 +64,11 @@
         <section id="daily" class="page-section">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h1>Daily Planning</h1>
-                </div>
-            <div class="tab-container">
-                <button id="tab-personal" class="tab-btn active" onclick="switchDailyTab('personal')">Personal</button>
-                <button id="tab-work" class="tab-btn" onclick="switchDailyTab('work')">Work (Kanban)</button>
             </div>
             
-            <div id="view-personal" class="daily-view">
+            <div id="view-personal" class="daily-view" style="display:block;">
                 <div class="personal-actions" style="display:flex; gap:10px; margin-bottom:15px;">
-                    <button onclick="openAddTaskModal('Personal')" style="background:var(--accent); color:white; border:none; padding:0.6rem 1.2rem; border-radius:4px; cursor:pointer; font-weight:bold; flex:1;">+ Add Task</button>
+                    <button onclick="openAddTaskModal()" style="background:var(--accent); color:white; border:none; padding:0.6rem 1.2rem; border-radius:4px; cursor:pointer; font-weight:bold; flex:1;">+ Add Task</button>
                     <button onclick="toggleSelectionMode()" id="btn-select-mode" style="color:var(--primary); background:white; border:1px solid #ccc; padding:0.6rem 1.2rem; border-radius:4px; cursor:pointer;">Select</button>
                     <button onclick="addPersonalSection()" style="color:#666; background:white; border:1px dashed #ccc; padding:0.6rem 10px; border-radius:4px; cursor:pointer;">+ Section</button>
                 </div>
@@ -78,34 +76,11 @@
                     <p style="padding:1rem;">Loading tasks...</p>
                 </div>
             </div>
-
-            <div id="view-work" class="daily-view kanban-board" style="display:none;">
-                <div style="grid-column: 1 / -1; margin-bottom: 10px;">
-                    <button onclick="openAddTaskModal('Work')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Work Task</button>
-                </div>
-
-                <div class="kanban-column" id="col-todo">
-                    <div class="kanban-header">To Do <span id="count-todo">0</span></div>
-                    <div class="task-container" data-status="Todo"></div>
-                </div>
-                <div class="kanban-column" id="col-inprogress">
-                    <div class="kanban-header">In Progress <span id="count-inprogress">0</span></div>
-                    <div class="task-container" data-status="In-Progress"></div>
-                </div>
-                <div class="kanban-column" id="col-onhold">
-                    <div class="kanban-header">On Hold <span id="count-onhold">0</span></div>
-                    <div class="task-container" data-status="On-Hold"></div>
-                </div>
-                <div class="kanban-column" id="col-done">
-                    <div class="kanban-header">Completed <span id="count-done">0</span></div>
-                    <div class="task-container" data-status="Done"></div>
-                </div>
-            </div>
         </section>
 
         <section id="monthly" class="page-section">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h1>Monthly Goals (January)</h1>
+                <h1>Monthly Goals</h1>
                 <button onclick="openGoalModal('Monthly')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Goal</button>
             </div>
             <div id="monthly-goals-container" class="goals-grid"></div>
@@ -113,7 +88,7 @@
 
         <section id="yearly" class="page-section">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h1>Yearly Goals (2026)</h1>
+                <h1>Yearly Goals</h1>
                 <button onclick="openGoalModal('Yearly')" style="background:var(--accent); color:white; border:none; padding:0.5rem 1rem; border-radius:4px; cursor:pointer;">+ New Goal</button>
             </div>
             <div id="yearly-goals-container" class="goals-grid"></div>
@@ -214,7 +189,8 @@
         <div style="background:white; width:500px; max-width:95%; margin:50px auto; padding:2rem; border-radius:8px; max-height:90vh; overflow-y:auto;">
             <h2 id="task-modal-title">Edit Task</h2>
             <input type="hidden" id="task-id">
-            <input type="hidden" id="task-status">
+            <input type="hidden" id="task-type" value="Personal">
+            <input type="hidden" id="task-status" value="Todo">
 
             <label style="display:block; margin-top:10px; font-weight:bold; font-size:0.9rem;">Task Name</label>
             <div style="position:relative; margin-top:5px;">
@@ -223,50 +199,11 @@
                        onkeypress="handleTaskTitleKey(event)"
                        oninput="checkDateIntent(this.value)">
                 
-                <div id="date-suggestion" class="date-suggestion-chip" onclick="applySuggestedDate()">
-                    </div>
-            </div>
-
-            <div style="display:flex; gap:10px; margin-top:15px;">
-                <div style="flex:1;">
-                    <label style="font-size:0.9rem;">Type</label>
-                    <select id="task-type" style="width:100%; padding:0.5rem; margin-top:5px;">
-                        <option value="Personal">Personal</option>
-                        <option value="Work">Work</option>
-                    </select>
-                </div>
-                <div style="flex:1;" id="status-container">
-                    <label style="font-size:0.9rem;">Status</label>
-                    <select id="task-status-select" style="width:100%; padding:0.5rem; margin-top:5px;">
-                        <option value="Todo">To Do</option>
-                        <option value="In-Progress">In Progress</option>
-                        <option value="On-Hold">On Hold</option>
-                        <option value="Done">Done</option>
-                    </select>
-                </div>
+                <div id="date-suggestion" class="date-suggestion-chip" onclick="applySuggestedDate()"></div>
             </div>
 
             <label style="display:block; margin-top:15px; font-weight:bold; font-size:0.9rem;">Description / Notes</label>
             <textarea id="task-desc" rows="4" style="width:100%; padding:0.5rem; margin-top:5px; border:1px solid #ccc; border-radius:4px;" placeholder="Add details..."></textarea>
-
-            <div id="work-dates-wrapper" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:15px;">
-                <div>
-                    <label style="font-size:0.8rem;">Start Date</label>
-                    <div id="modal-start-btn" class="date-input-fake" onclick="openDateMenu(event, 'modal-start')">
-                        <span id="modal-start-text">Add Date</span>
-                        <span style="color:#888;">📅</span>
-                    </div>
-                    <input type="hidden" id="task-start">
-                </div>
-                <div>
-                    <label style="font-size:0.8rem;">Review Date</label>
-                    <div id="modal-review-btn" class="date-input-fake" onclick="openDateMenu(event, 'modal-review')">
-                        <span id="modal-review-text">Add Date</span>
-                        <span style="color:#888;">📅</span>
-                    </div>
-                    <input type="hidden" id="task-review">
-                </div>
-            </div>
 
             <div style="margin-top:15px;">
                 <label style="font-size:0.8rem;">Due Date</label>
@@ -353,6 +290,16 @@
         </div>
     </div>
 
+    <div id="bulk-toolbar" class="bulk-toolbar">
+        <span id="bulk-count" style="font-weight:bold; margin-right:5px;">0</span>
+        <div class="bulk-divider"></div>
+        <button class="bulk-btn" onclick="bulkActionDate()">📅 Date</button>
+        <button class="bulk-btn" onclick="bulkActionMove()">📂 Move</button>
+        <div class="bulk-divider"></div>
+        <button class="bulk-btn danger" onclick="bulkActionDelete()">🗑 Delete</button>
+        <button class="bulk-btn" onclick="toggleSelectionMode()" style="margin-left:5px;">✕</button>
+    </div>
+
     <div id="date-context-menu" class="context-menu" style="display:none;">
         <div class="menu-option" onclick="applyDatePreset('today')">
             <span>⭐️ Today</span>
@@ -373,18 +320,8 @@
     </div>
     
     <input type="date" id="hidden-date-picker" class="hidden-picker" onchange="applyCustomDate(this.value)">
-
+    
     <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
-
-    <div id="bulk-toolbar" class="bulk-toolbar">
-        <span id="bulk-count" style="font-weight:bold; margin-right:5px;">0</span>
-        <div class="bulk-divider"></div>
-        <button class="bulk-btn" onclick="bulkActionDate()">📅 Date</button>
-        <button class="bulk-btn" onclick="bulkActionMove()">📂 Move</button>
-        <div class="bulk-divider"></div>
-        <button class="bulk-btn danger" onclick="bulkActionDelete()">🗑 Delete</button>
-        <button class="bulk-btn" onclick="toggleSelectionMode()" style="margin-left:5px;">✕</button>
-    </div>
 
     <script src="app.js"></script>
 </body>
