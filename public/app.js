@@ -350,7 +350,8 @@ let activeModalField = null;
 
 function openDateMenu(e, source) {
     e.stopPropagation();
-    if (['modal-due', 'modal-start', 'modal-review'].includes(source)) {
+    // Only accept modal-due for now (as start/review are gone)
+    if (source === 'modal-due') {
         activeModalField = source; activeDateTaskId = null;
     } else {
         activeModalField = null; activeDateTaskId = source; 
@@ -410,6 +411,7 @@ async function applyCustomDate(dateStr) {
 
 function updateModalDateUI(dateStr, fieldType) {
     let inputId, textId;
+    // Removed modal-start and modal-review references
     if (fieldType === 'modal-due') { inputId = 'task-due'; textId = 'modal-due-text'; }
     else return;
 
@@ -426,9 +428,10 @@ async function saveTaskDate(id, dateStr) {
     await fetch('/api/tasks/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Cleared Start/Review dates
         body: JSON.stringify({ 
             id: task.id, title: task.title, type: 'Personal', status: task.status, 
-            description: task.description, due_date: dateStr 
+            description: task.description, start_date: null, due_date: dateStr, review_date: null 
         })
     });
 }
@@ -526,14 +529,19 @@ async function saveTask(isQuickMode = false) {
 
     if (!title) return alert("Task title required");
 
-    // Force Type='Personal'
+    // Force Type='Personal' and Status='Todo'
     await fetch('/api/tasks/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
             id: id || null, 
-            title, type: 'Personal', status: 'Todo', 
-            description: desc, due_date: due
+            title, 
+            type: 'Personal', 
+            status: 'Todo', 
+            description: desc, 
+            due_date: due,
+            start_date: null, // Explicitly nullify removed fields
+            review_date: null 
         })
     });
 
