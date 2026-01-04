@@ -535,3 +535,88 @@ column-count: 4;
     from { opacity: 0; transform: translate(10px, -40%); }
     to { opacity: 1; transform: translate(0, -40%); }
 }
+
+/* --- RESPONSIVE SIDEBAR --- */
+
+/* The Toggle Button (Hamburger) */
+.sidebar-toggle {
+    position: fixed;
+    top: 15px;
+    left: 20px;
+    z-index: 3000; /* Above everything */
+    background: white;
+    border: 1px solid #ddd;
+    color: var(--primary);
+    font-size: 1.2rem;
+    padding: 5px 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    transition: all 0.2s;
+    display: none; /* JS will show it if needed, or we show by default */
+}
+.sidebar-toggle:hover { background: #f9f9f9; }
+
+/* Desktop Behavior (Default) */
+.sidebar {
+    transition: transform 0.3s ease;
+    z-index: 2000;
+}
+.main-content {
+    transition: margin-left 0.3s ease, width 0.3s ease;
+}
+
+/* Collapsed State (Desktop) */
+body.collapsed .sidebar {
+    transform: translateX(-100%);
+}
+body.collapsed .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+}
+/* Shift button when sidebar is open on desktop? No, fixed position works best. */
+
+
+/* Mobile Behavior */
+@media (max-width: 768px) {
+    /* Show Toggle Button */
+    .sidebar-toggle { display: block; }
+
+    /* Hide Sidebar by default */
+    .sidebar {
+        transform: translateX(-100%);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+    }
+
+    /* Full width content */
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+        padding: 1rem;
+        padding-top: 4rem; /* Make room for the button */
+    }
+
+    /* Open State (Mobile) */
+    body.mobile-open .sidebar {
+        transform: translateX(0);
+    }
+
+    /* Backdrop Overlay */
+    .sidebar-overlay {
+        display: none;
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 1500; /* Below sidebar, above content */
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    body.mobile-open .sidebar-overlay {
+        display: block;
+        opacity: 1;
+    }
+}
+
+/* Show toggle on desktop too if you want to collapse it manually */
+@media (min-width: 769px) {
+    .sidebar-toggle { display: block; }
+}
