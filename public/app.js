@@ -231,10 +231,10 @@ function openDateMenu(e, source) {
 
     const menu = document.getElementById('date-context-menu');
     
-    // Use currentTarget to get the element we attached the listener to (the button/badge)
+    // Use currentTarget to get the button element, not the icon inside
     const rect = e.currentTarget.getBoundingClientRect();
     
-    // Position menu relative to the document (including scroll)
+    // Position menu relative to the DOCUMENT (including scroll)
     menu.style.left = (rect.left + window.scrollX) + 'px';
     menu.style.top = (rect.bottom + window.scrollY + 5) + 'px';
     menu.style.display = 'block';
@@ -242,7 +242,6 @@ function openDateMenu(e, source) {
 
 async function applyDatePreset(preset) {
     const menu = document.getElementById('date-context-menu');
-    // Hide menu immediately so it doesn't get in the way
     menu.style.display = 'none';
     
     let newDate = "";
@@ -261,16 +260,15 @@ async function applyDatePreset(preset) {
     } else if (preset === 'custom') {
         const picker = document.getElementById('hidden-date-picker');
         
-        // Move the hidden picker to where the menu was 
-        // This forces the browser calendar to spawn near the user's mouse
+        // MOVE the hidden picker to the menu's location so the calendar pops up HERE
         picker.style.top = menu.style.top;
         picker.style.left = menu.style.left;
         
         picker.showPicker ? picker.showPicker() : picker.click(); 
-        return; // Stop here, wait for 'onchange' event
+        return; 
     }
 
-    // Apply the date directly for presets
+    // Apply the date
     if (activeModalField) {
         updateModalDateUI(newDate, activeModalField);
     } else if (activeDateTaskId) {
@@ -284,7 +282,6 @@ async function applyCustomDate(dateStr) {
     } else if (activeDateTaskId) {
         await saveTaskDate(activeDateTaskId, dateStr);
     }
-    // Reset picker so the same date can be picked again if needed
     document.getElementById('hidden-date-picker').value = '';
 }
 
@@ -464,13 +461,17 @@ document.querySelectorAll('.task-container').forEach(container => {
 });
 
 // --- MODALS ---
-function openAddTaskModal() { openTaskModal(null); }
+// Updated to accept default type
+function openAddTaskModal(type) { 
+    openTaskModal(null, type); 
+}
+
 function openTaskModalId(id) {
     const task = allTasks.find(t => t.id === id);
     if(task) openTaskModal(task);
 }
 
-function openTaskModal(task) {
+function openTaskModal(task, defaultType = 'Work') {
     const modal = document.getElementById('task-modal');
     if(!modal) return;
     
@@ -505,7 +506,8 @@ function openTaskModal(task) {
         document.getElementById('task-modal-title').innerText = "New Task";
         document.getElementById('task-id').value = '';
         document.getElementById('task-title').value = '';
-        const defaultType = 'Work';
+        
+        // Use passed default type (Personal/Work)
         document.getElementById('task-type').value = defaultType;
         document.getElementById('task-status-select').value = 'Todo';
         document.getElementById('task-desc').value = '';
@@ -518,13 +520,22 @@ function openTaskModal(task) {
         
         const delBtn = document.querySelector('.delete-btn');
         if(delBtn) delBtn.style.display = 'none';
+        
+        // Focus title box for speed
+        setTimeout(() => document.getElementById('task-title').focus(), 100);
     }
     
     document.getElementById('task-type').onchange = (e) => updateFormLayout(e.target.value);
     modal.style.display = 'block';
 }
 
-async function saveTask() {
+function handleTaskTitleKey(e) {
+    if (e.key === 'Enter') {
+        saveTask(true); // true = quick mode
+    }
+}
+
+async function saveTask(isQuickMode = false) {
     const id = document.getElementById('task-id').value;
     const title = document.getElementById('task-title').value;
     const type = document.getElementById('task-type').value;
@@ -550,8 +561,16 @@ async function saveTask() {
         })
     });
 
-    document.getElementById('task-modal').style.display = 'none';
-    fetchTasks();
+    if (isQuickMode && !id) {
+        // Quick Mode (New Task): Clear title, keep modal open, focus title
+        document.getElementById('task-title').value = '';
+        fetchTasks(); // Refresh bg list
+        document.getElementById('task-title').focus();
+    } else {
+        // Normal Mode: Close modal
+        document.getElementById('task-modal').style.display = 'none';
+        fetchTasks();
+    }
 }
 
 async function deleteTask() {
