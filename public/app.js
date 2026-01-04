@@ -24,6 +24,22 @@ function setupNavigation() {
             menu.style.display = 'none';
         }
     });
+
+    // GLOBAL SHORTCUTS: Escape to close all modals
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeAllModals();
+        }
+    });
+}
+
+function closeAllModals() {
+    // Hide all modals and the date menu
+    const ids = ['task-modal', 'goal-modal', 'budget-modal', 'vision-modal', 'date-context-menu'];
+    ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+    });
 }
 
 /* --- DASHBOARD LOGIC --- */
@@ -268,7 +284,7 @@ async function applyDatePreset(preset) {
         return; 
     }
 
-    // Apply the date
+    // Apply the date directly for presets
     if (activeModalField) {
         updateModalDateUI(newDate, activeModalField);
     } else if (activeDateTaskId) {
@@ -286,7 +302,6 @@ async function applyCustomDate(dateStr) {
 }
 
 function updateModalDateUI(dateStr, fieldType) {
-    // Map field type to DOM IDs
     let inputId, textId;
     if (fieldType === 'modal-due') { inputId = 'task-due'; textId = 'modal-due-text'; }
     else if (fieldType === 'modal-start') { inputId = 'task-start'; textId = 'modal-start-text'; }
